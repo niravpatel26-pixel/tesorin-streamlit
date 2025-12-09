@@ -65,13 +65,14 @@ country_display = st.selectbox(
     ["🇮🇳 India", "🇨🇦 Canada"],
 )
 
-# Map display text → internal code
+# Map the selected label to internal country code
 if "India" in country_display:
     country = "IN"
 else:
     country = "CA"
 
 currency = get_currency(country)
+
 
             currency = get_currency(country)
 
