@@ -68,7 +68,7 @@ def main():
 # Map the selected label to internal country code
            if "India" in country_display:
             country = "IN"
-            else:
+           else:
             country = "CA"
 
             currency = get_currency(country)
