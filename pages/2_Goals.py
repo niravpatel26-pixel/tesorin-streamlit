@@ -2,55 +2,78 @@ import streamlit as st
 from logic import monthly_goal_contribution
 
 
-def main():
-    st.title("Goals")
+def get_currency(country_code: str) -> str:
+    return "₹" if country_code == "IN" else "$"
 
+
+def ensure_profile():
     if "profile" not in st.session_state:
-        st.warning("Go to the Home page first and save a snapshot.")
-        return
+        st.warning("Go to the **Home** page and save a snapshot first.")
+        st.stop()
 
-    currency = "₹" if st.session_state.profile["country"] == "IN" else "$"
 
-    st.write("This v0.1 goals page lets you rough out 1–3 goals manually.")
+GOAL_TYPES = [
+    "Emergency fund",
+    "House down payment",
+    "Car",
+    "Travel",
+    "Education",
+    "Wedding",
+    "Retirement seed",
+]
 
-    num_goals = st.slider("How many goals do you want to sketch?", 1, 3, 1)
 
-    goals_data = []
-    for i in range(num_goals):
-        st.markdown(f"#### Goal {i + 1}")
-        col1, col2, col3 = st.columns([2, 2, 2])
-        with col1:
-            name = st.text_input("Name", key=f"goal_name_{i}", value=f"Goal {i + 1}")
-        with col2:
-            target_amount = st.number_input(
-                f"Target amount ({currency})",
-                min_value=0.0,
-                step=10000.0,
-                key=f"goal_amount_{i}",
-            )
-        with col3:
-            target_year = st.number_input(
-                "Target year",
-                min_value=2025,
-                max_value=2050,
-                value=2030,
-                step=1,
-                key=f"goal_year_{i}",
-            )
+def main():
+    ensure_profile()
+    profile = st.session_state.profile
 
-        if target_amount > 0:
-            monthly = monthly_goal_contribution(target_amount, target_year)
-            st.caption(
-                f"Rough monthly contribution: **{currency}{monthly:,.0f}** "
-                "(simple division, no compounding yet)."
-            )
+    country = profile["country"]
+    currency = get_currency(country)
 
-        goals_data.append(
-            {"name": name, "target_amount": target_amount, "target_year": target_year}
+    st.title("Goals")
+    st.caption(
+        "Rough, high-level goal planner. Later we can make this more detailed and persistent."
+    )
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        goal_type = st.selectbox("Goal type", GOAL_TYPES)
+        target_amount = st.number_input(
+            f"Target amount ({currency})", min_value=0.0, step=10000.0
+        )
+        target_year = st.number_input(
+            "Target year", min_value=2025, max_value=2100, value=2030, step=1
         )
 
-    st.markdown("---")
-    st.info("Later, these goals can be saved to Supabase and tied into your main monthly plan.")
+        if st.button("Calculate monthly contribution"):
+            monthly = monthly_goal_contribution(target_amount, target_year)
+            st.session_state["current_goal"] = {
+                "type": goal_type,
+                "amount": target_amount,
+                "year": target_year,
+                "monthly": monthly,
+            }
+
+    with col2:
+        goal = st.session_state.get("current_goal")
+        if not goal:
+            st.info("Set a goal on the left to see a suggested monthly contribution.")
+        else:
+            monthly = goal["monthly"]
+            st.subheader("Suggested plan")
+            st.write(f"**Goal:** {goal['type']}")
+            st.write(
+                f"**Target:** {currency}{goal['amount']:,.0f} by **{goal['year']}**."
+            )
+            st.write(
+                f"Required contribution: **{currency}{monthly:,.0f} / month** "
+                "with no compounding (v0.1 simple rule)."
+            )
+
+            st.caption(
+                "In future versions we can add expected returns, risk levels, and priority between multiple goals."
+            )
 
 
 if __name__ == "__main__":
