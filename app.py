@@ -59,11 +59,20 @@ def main():
         with left:
             st.subheader("1. Basic profile & cashflow")
 
-            country_display = st.selectbox(
-                "Where do you manage your money?",
-                ["IN · India", "CA · Canada"],
-            )
-            country = "IN" if country_display.startswith("IN") else "CA"
+            # Country selector with flags
+country_display = st.selectbox(
+    "Where do you manage your money?",
+    ["🇮🇳 India", "🇨🇦 Canada"],
+)
+
+# Map display text → internal code
+if "India" in country_display:
+    country = "IN"
+else:
+    country = "CA"
+
+currency = get_currency(country)
+
             currency = get_currency(country)
 
             age = st.slider("Age", min_value=18, max_value=60, value=25)
