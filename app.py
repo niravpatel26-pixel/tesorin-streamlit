@@ -4,10 +4,9 @@ from datetime import datetime
 # ---- PAGE CONFIG ----
 st.set_page_config(
     page_title="Tesorin – First Step Planner",
-    page_icon="💸",
+    page_icon="favicon.ico",  # path to your icon file
     layout="wide",
 )
-
 # ---- HELPER FUNCTIONS ----
 def calculate_cashflow(income: float, expenses: float) -> float:
     return income - expenses
