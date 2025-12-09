@@ -62,17 +62,14 @@ def main():
             # Country selector with flags
             country_display = st.selectbox(
                 "Where do you manage your money?",
-                 ["🇮🇳 India", "🇨🇦 Canada"],
+                ["🇮🇳 India", "🇨🇦 Canada"],
             )
 
-# Map the selected label to internal country code
-           if "India" in country_display:
-            country = "IN"
-           else:
-            country = "CA"
-
-            currency = get_currency(country)
-
+            # Map the selected label to internal country code
+            if "India" in country_display:
+                country = "IN"
+            else:
+                country = "CA"
 
             currency = get_currency(country)
 
