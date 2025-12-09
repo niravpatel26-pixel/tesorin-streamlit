@@ -2,44 +2,57 @@ import streamlit as st
 from logic import allocate_monthly_plan
 
 
-def main():
-    st.title("Monthly Plan")
+def get_currency(country_code: str) -> str:
+    if country_code == "IN":
+        return "₹"
+    return "$"
 
+
+def ensure_profile():
     if "profile" not in st.session_state:
-        st.warning("Go to the Home page first and save a snapshot.")
-        return
+        st.warning("Go to the **Home** page and save a snapshot first.")
+        st.stop()
 
+
+def main():
+    ensure_profile()
     profile = st.session_state.profile
+
     country = profile["country"]
-    currency = "₹" if country == "IN" else "$"
+    currency = get_currency(country)
+    income = profile["income"]
+    expenses = profile["expenses"]
+    debt = profile["debt"]
+    high_interest_debt = profile["high_interest_debt"]
+
+    st.title("Monthly Plan")
+    st.caption("How your recommended monthly saving is split.")
 
     plan = allocate_monthly_plan(
-        income=profile["income"],
-        expenses=profile["expenses"],
+        income=income,
+        expenses=expenses,
         country=country,
-        debt=profile["debt"],
-        high_interest_debt=profile["high_interest_debt"],
+        debt=debt,
+        high_interest_debt=high_interest_debt,
     )
 
-    cashflow = plan["cashflow"]
     rec = plan["recommended_saving"]
-
-    st.write(f"Monthly cashflow after expenses: **{currency}{cashflow:,.0f}**")
     if rec <= 0:
-        st.info("Right now, there isn't enough free cash to build a plan. Small changes in income/spending will help.")
-        return
+        st.info(
+            "Right now your cashflow is not positive. Adjust income/expenses on the Home page first."
+        )
+        st.stop()
 
-    st.write(f"Suggested monthly saving: **{currency}{rec:,.0f}**")
+    st.metric("Recommended saving per month", f"{currency}{rec:,.0f}")
 
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Emergency bucket", f"{currency}{plan['emergency']:,.0f}")
-    with col2:
-        st.metric("Investing bucket", f"{currency}{plan['investing']:,.0f}")
-    with col3:
-        st.metric("Debt bucket", f"{currency}{plan['debt']:,.0f}")
+    st.markdown("### Breakdown")
+    st.write(
+        f"- Emergency buffer: **{currency}{plan['emergency']:,.0f}** / month\n"
+        f"- Long-term investing: **{currency}{plan['investing']:,.0f}** / month\n"
+        f"- Debt payoff: **{currency}{plan['debt']:,.0f}** / month"
+    )
 
-    st.markdown("### Visual split")
+    st.markdown("---")
     st.bar_chart(
         {
             "Emergency": [plan["emergency"]],
@@ -48,8 +61,9 @@ def main():
         }
     )
 
-    st.markdown("---")
-    st.caption("This v0.1 plan is rule-based and simple. Over time, you can layer more CFA-style assumptions here.")
+    st.caption(
+        "These are simple v0.1 rules. Later we can make this smarter and more personalised."
+    )
 
 
 if __name__ == "__main__":
