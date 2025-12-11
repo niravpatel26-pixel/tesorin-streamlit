@@ -492,7 +492,7 @@ def main():
         page_country_profile()
     elif screen == "wealthflow":
         page_wealthflow()
-          else:
+    else:
         # Fallback – shouldn't happen
         st.session_state.screen = "landing"
         page_landing()
