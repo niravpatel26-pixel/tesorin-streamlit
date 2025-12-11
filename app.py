@@ -131,37 +131,66 @@ def init_state():
             "goals": [],
         }
 
+def sync_screen_from_query_params():
+    """
+    Let the URL control which screen is open, so links like ?screen=signup work.
+    """
+    params = st.experimental_get_query_params()
+    raw = params.get("screen")
+    if not raw:
+        return
+
+    screen_from_url = raw[0]
+    valid = {"landing", "signup", "login", "country_profile", "wealthflow"}
+    if screen_from_url in valid:
+        st.session_state.screen = screen_from_url
 
 # ---------- SCREENS ----------
 
 
 def page_landing():
-    """First screen: simple hero + Sign up / Log in buttons."""
+def page_landing():
+    """First screen: hero CTA + Sign up / Log in buttons."""
+    spacer_left, main, spacer_right = st.columns([0.5, 2, 0.5])
 
-    # Center the main content in the middle column
-    spacer_left, main, spacer_right = st.columns([1, 2, 1])
     with main:
-        st.markdown("### Tesorin — your first calm money plan")
-        st.write(
-            "Start with a simple view of your income, expenses, and goals. "
-            "No trading screens, no hype – just a calm money plan you can actually follow."
+        st.markdown("#### Tesorin")
+        st.markdown("## Your first calm money plan")
+
+        # Hero CTA pill
+        st.markdown(
+            """
+            <div class="tesorin-hero-card">
+              <div class="tesorin-cta-wrap">
+                <div>
+                  <p class="tesorin-hero-title">
+                    Start your first serious wealth plan with Tesorin.
+                  </p>
+                  <p class="tesorin-hero-subtitle">
+                    Join the early access list and help shape a calmer way to do money.
+                  </p>
+                </div>
+                <div>
+                  <a href="?screen=signup" class="tesorin-cta-button">
+                    Join early access &rarr;
+                  </a>
+                </div>
+              </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
         )
 
-        st.markdown("---")
+        st.markdown("")
+        st.caption("Already on the list? Log in below.")
 
-        st.markdown("#### Get started")
         col1, col2 = st.columns(2)
         with col1:
             if st.button("Sign up", use_container_width=True):
                 st.session_state.screen = "signup"
-
         with col2:
             if st.button("Log in", use_container_width=True):
                 st.session_state.screen = "login"
-
-        st.caption(
-            "Later, this screen can show small stories or illustrations like in your mobile mockup."
-        )
 
 
 def page_signup():
@@ -445,7 +474,11 @@ def page_wealthflow():
 
 def main():
     init_state()
+    sync_screen_from_query_params()  # NEW LINE
     screen = st.session_state.screen
+
+    if screen == "landing":
+        page_landing()
 
     if screen == "landing":
         page_landing()
