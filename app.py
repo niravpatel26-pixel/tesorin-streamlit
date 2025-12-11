@@ -149,7 +149,6 @@ def sync_screen_from_query_params():
 
 
 def page_landing():
-def page_landing():
     """First screen: hero CTA + Sign up / Log in buttons."""
     spacer_left, main, spacer_right = st.columns([0.5, 2, 0.5])
 
