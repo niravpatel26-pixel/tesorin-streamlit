@@ -324,16 +324,12 @@ def init_state() -> None:
     """Initialise all keys in session_state that we use."""
     ss = st.session_state
 
-    # Which big screen are we on?
-    # landing, signup, login, country_profile, main (logged-in app shell)
     if "screen" not in ss:
         ss.screen = "landing"
 
-    # Who is logged in (if anyone)?
     if "user" not in ss:
-        ss.user = None  # dict with email/name once signed in
+        ss.user = None
 
-    # Basic profile + numbers used by the planner
     if "profile" not in ss:
         ss.profile = {
             "country": "IN",
@@ -343,36 +339,32 @@ def init_state() -> None:
             "savings": 0.0,
             "debt": 0.0,
             "high_interest_debt": False,
-            "goals": [],  # list of goal names you’re tracking
+            "goals": [],
         }
 
-    # Which tab inside the app shell are we on? (home, wealthflow, next)
     if "main_tab" not in ss:
         ss.main_tab = "home"
 
-    # Simple wallets + transactions for Wealthflow
     if "wallets" not in ss:
         ss.wallets = [
             {
                 "id": "main",
                 "name": "Household wallet",
-                "transactions": [],  # list of dicts: date, category, note, amount
+                "transactions": [],
             }
         ]
 
     if "wealthflow_view" not in ss:
-        ss.wealthflow_view = "overview"  # 'overview' or 'wallet'
+        ss.wealthflow_view = "overview"
 
     if "selected_wallet_id" not in ss:
         ss.selected_wallet_id = "main"
 
-    # Default period for wealthflow: this month to today
     if "wealthflow_period" not in ss:
         today = date.today()
         start = today.replace(day=1)
         ss.wealthflow_period = (start, today)
 
-    # Store answers for Next step (latest “thinking” about one goal)
     if "next_step" not in ss:
         ss.next_step = {
             "primary_goal": None,
@@ -384,8 +376,6 @@ def init_state() -> None:
             "target_amount": 0.0,
         }
 
-    # List of tracked goals with progress
-    # each item: {id, name, kind, target, saved, monthly_target, timeframe, why}
     if "goal_plans" not in ss:
         ss.goal_plans = []
 
@@ -396,7 +386,6 @@ def sync_screen_from_query_params() -> None:
     raw = params.get("screen")
     if not raw:
         return
-
     screen_from_url = raw[0]
     valid = {"landing", "signup", "login", "country_profile", "main"}
     if screen_from_url in valid:
@@ -419,7 +408,7 @@ def compute_wallet_stats(wallet, start_date, end_date):
     balance = sum(t["amount"] for t in txns)
     income = sum(t["amount"] for t in txns if t["amount"] > 0)
     expenses = sum(-t["amount"] for t in txns if t["amount"] < 0)
-    change = balance  # simple model
+    change = balance
     return {
         "balance": balance,
         "income": income,
@@ -431,11 +420,9 @@ def compute_wallet_stats(wallet, start_date, end_date):
 # ---------- SCREENS ----------
 
 def page_landing() -> None:
-    """First screen: simple hero + Sign up / Log in buttons."""
     spacer_left, main, spacer_right = st.columns([0.5, 2, 0.5])
 
     with main:
-        # Logo + tagline
         st.markdown(
             """
             <div class="tesorin-logo-word">Tesorin</div>
@@ -444,7 +431,6 @@ def page_landing() -> None:
             unsafe_allow_html=True,
         )
 
-        # Caslon-style hero heading
         st.markdown(
             """
             <h1 class="tesorin-hero-heading">
@@ -460,13 +446,14 @@ def page_landing() -> None:
         with col1:
             if st.button("Sign up", use_container_width=True):
                 st.session_state.screen = "signup"
+                st.rerun()
         with col2:
             if st.button("Log in", use_container_width=True):
                 st.session_state.screen = "login"
+                st.rerun()
 
 
 def page_signup() -> None:
-    """Sign-up form: name (optional), email, password, terms."""
     spacer_left, main, spacer_right = st.columns([1, 2, 1])
     with main:
         st.markdown("### Create your Tesorin account")
@@ -476,14 +463,12 @@ def page_signup() -> None:
             email = st.text_input("Email")
             password = st.text_input("Password", type="password")
             agree = st.checkbox("I agree to the terms and conditions")
-
             submitted = st.form_submit_button("Sign up")
 
         if submitted:
             if not email or not password:
                 st.error("Email and password are required.")
                 return
-
             if not agree:
                 st.error("Please agree to the terms to continue.")
                 return
@@ -498,15 +483,15 @@ def page_signup() -> None:
                 "name": name or email.split("@")[0],
             }
             st.session_state.screen = "country_profile"
-            st.success("Account created. Let’s set your country and basic profile.")
+            st.rerun()
 
         st.markdown("")
         if st.button("Back to start", type="secondary"):
             st.session_state.screen = "landing"
+            st.rerun()
 
 
 def page_login() -> None:
-    """Log-in form: email, password."""
     spacer_left, main, spacer_right = st.columns([1, 2, 1])
     with main:
         st.markdown("### Welcome back")
@@ -528,21 +513,20 @@ def page_login() -> None:
 
             st.session_state.user = user_or_error
             st.session_state.screen = "country_profile"
-            st.success("Logged in. Let’s confirm your country & profile.")
+            st.rerun()
 
         st.markdown("")
         if st.button("Back to start", type="secondary"):
             st.session_state.screen = "landing"
+            st.rerun()
 
 
 def page_country_profile() -> None:
-    """Ask for country and age before going into the main app shell."""
     ss = st.session_state
     profile = ss.profile
 
     st.markdown("### 1. Country & basic profile")
 
-    # Show who is logged in
     if ss.user:
         st.caption(f"Signed in as **{ss.user.get('name', ss.user['email'])}**")
 
@@ -552,10 +536,7 @@ def page_country_profile() -> None:
         index=0 if profile["country"] == "IN" else 1,
     )
 
-    if "India" in country_display:
-        country = "IN"
-    else:
-        country = "CA"
+    country = "IN" if "India" in country_display else "CA"
 
     age = st.slider("Age", min_value=18, max_value=60, value=profile["age"])
 
@@ -563,25 +544,24 @@ def page_country_profile() -> None:
         ss.profile["country"] = country
         ss.profile["age"] = age
         ss.screen = "main"
-        ss.main_tab = "home"  # always land on Home first
-        st.success("Saved. Now let’s look at your planner.")
+        ss.main_tab = "home"
+        st.rerun()
 
     if st.button("Log out", type="secondary"):
         sign_out()
         ss.user = None
         ss.screen = "landing"
+        st.rerun()
 
 
 # ---------- MAIN APP SHELL (HOME / WEALTHFLOW / NEXT) ----------
 
 def page_main() -> None:
-    """Main app shell with 3 tabs: Home / Wealthflow / Next step."""
     ss = st.session_state
     profile = ss.profile
     country = profile["country"]
     currency = get_currency(country)
 
-    # App-style top bar
     st.markdown(
         """
         <div class="tesorin-appbar">
@@ -608,12 +588,10 @@ def page_main() -> None:
         debt = float(profile["debt"])
 
         cashflow = calculate_cashflow(income, expenses)
-        net_worth = calculate_net_worth(savings, debt)
         savings_rate = calculate_savings_rate(income, cashflow)
         low_target, high_target = savings_rate_target(country, income)
         e_target = emergency_fund_target(expenses, debt)
 
-        # Emergency fund progress: prefer Emergency goal if present
         emergency_goal = None
         for g in ss.goal_plans:
             name = g.get("name", "").lower()
@@ -637,7 +615,6 @@ def page_main() -> None:
         em_percent = em_ratio * 100
         cashflow_display = cashflow if cashflow > 0 else 0.0
 
-        # Goals snapshot html
         goals_html = ""
         if ss.goal_plans:
             rows = ""
@@ -714,10 +691,7 @@ def page_main() -> None:
     elif tab == "wealthflow":
         st.subheader("Wealthflow · wallets & transactions")
 
-        period_value = st.date_input(
-            "Period",
-            value=ss.wealthflow_period,
-        )
+        period_value = st.date_input("Period", value=ss.wealthflow_period)
         if isinstance(period_value, (list, tuple)) and len(period_value) == 2:
             start_date, end_date = period_value
         else:
@@ -747,6 +721,7 @@ def page_main() -> None:
             with col_buttons:
                 if st.button("Open wallet", use_container_width=True):
                     ss.wealthflow_view = "wallet"
+                    st.rerun()
 
             st.markdown("")
             c1, c2, c3, c4 = st.columns(4)
@@ -767,6 +742,7 @@ def page_main() -> None:
         else:
             if st.button("← Back to wallets", use_container_width=True):
                 ss.wealthflow_view = "overview"
+                st.rerun()
 
             st.markdown(f"#### {wallet['name']} · transactions")
 
@@ -779,7 +755,6 @@ def page_main() -> None:
                     value=0.0,
                     step=100.0,
                 )
-
                 submitted = st.form_submit_button("Add transaction")
 
             if submitted:
@@ -796,16 +771,15 @@ def page_main() -> None:
 
             st.markdown("##### Transactions in this period")
             if stats["transactions"]:
-                rows = []
-                for t in stats["transactions"]:
-                    rows.append(
-                        {
-                            "Date": t["date"].strftime("%b %d, %Y"),
-                            "Category": t["category"],
-                            "Note": t["note"],
-                            "Amount": f"{currency}{t['amount']:,.2f}",
-                        }
-                    )
+                rows = [
+                    {
+                        "Date": t["date"].strftime("%b %d, %Y"),
+                        "Category": t["category"],
+                        "Note": t["note"],
+                        "Amount": f"{currency}{t['amount']:,.2f}",
+                    }
+                    for t in stats["transactions"]
+                ]
                 st.table(rows)
             else:
                 st.caption("No transactions in this period yet.")
@@ -890,6 +864,7 @@ def page_main() -> None:
                     default_name = "Long-term investing"
                 elif "specific purchase" in primary_goal.lower():
                     default_name = "Big purchase"
+
             goal_name = st.text_input(
                 "Give this goal a short name",
                 value=default_name,
@@ -1111,22 +1086,27 @@ def page_main() -> None:
     with nav1:
         if st.button("💸 Wealthflow", use_container_width=True):
             ss.main_tab = "wealthflow"
+            st.rerun()
     with nav2:
         if st.button("🏠 Home", use_container_width=True):
             ss.main_tab = "home"
+            st.rerun()
     with nav3:
         if st.button("➡ Next step", use_container_width=True):
             ss.main_tab = "next"
+            st.rerun()
 
     col_left, col_right = st.columns(2)
     with col_left:
         if st.button("Back to country & profile", type="secondary"):
             ss.screen = "country_profile"
+            st.rerun()
     with col_right:
         if st.button("Log out", type="secondary"):
             sign_out()
             ss.user = None
             ss.screen = "landing"
+            st.rerun()
 
 
 # ---------- MAIN ROUTER ----------
