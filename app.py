@@ -64,7 +64,7 @@ def init_state():
 
 def page_landing():
     """First screen: simple hero + Sign up / Log in buttons."""
-    st.markdown("### Tesorin · First Step")
+    st.markdown("### Tesorin — your first calm Wealth plan")
     st.markdown(
         "**Build your first serious money plan** with a calm, simple view of your "
         "cashflow, safety buffer and goals."
