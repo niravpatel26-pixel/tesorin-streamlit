@@ -581,7 +581,6 @@ def page_main() -> None:
     tab = ss.main_tab
 
     # --- HOME TAB ---
-        # --- HOME TAB ---
     if tab == "home":
         income = float(profile["income"])
         expenses = float(profile["expenses"])
@@ -590,7 +589,7 @@ def page_main() -> None:
 
         cashflow = calculate_cashflow(income, expenses)
         savings_rate = calculate_savings_rate(income, cashflow)
-        low_target, high_target = savings_rate_target(country, income)
+        low_target, high_target = savings_rate_target(country, income)  # noqa: F841
         e_target = emergency_fund_target(expenses, debt)
 
         # Prefer an explicit "Emergency fund" goal if one exists
@@ -607,7 +606,6 @@ def page_main() -> None:
             em_saved = float(emergency_goal.get("saved", 0.0))
             em_ratio = max(0.0, min(1.0, em_saved / em_target))
         else:
-            # Fall back to simple rule using savings vs. suggested emergency target
             if e_target > 0:
                 em_ratio = max(0.0, min(1.0, savings / e_target))
             else:
@@ -632,7 +630,6 @@ def page_main() -> None:
                     pct = 0
                     amounts_text = f"{currency}{saved:,.0f} saved"
 
-                # Build HTML without leading spaces so Streamlit doesn't treat it as code
                 rows += (
                     '<div class="tesorin-goal-row">'
                     '  <div class="tesorin-goal-row-top">'
@@ -691,7 +688,6 @@ def page_main() -> None:
         </div>
         """
         st.markdown(home_html, unsafe_allow_html=True)
-
 
     # --- WEALTHFLOW TAB ---
     elif tab == "wealthflow":
@@ -1057,10 +1053,11 @@ def page_main() -> None:
                         ss.profile["goals"].append(name)
                     st.success(f"Added new tracked goal: {name}")
 
-               if ss.goal_plans:
+        # ---- Goal progress section (including Emergency fund) ----
+        if ss.goal_plans:
             st.markdown("### Track progress on your goals")
 
-            # Try to find an Emergency fund goal (by name or kind)
+            # Find an Emergency fund goal (by name or kind)
             emergency_goal = next(
                 (
                     g
@@ -1118,7 +1115,11 @@ def page_main() -> None:
 
                 st.caption(
                     f"**{goal['name']}** — {currency}{saved:,.0f}"
-                    + (f" / {currency}{target:,.0f} ({pct}% complete)" if target > 0 else "")
+                    + (
+                        f" / {currency}{target:,.0f} ({pct}% complete)"
+                        if target > 0
+                        else ""
+                    )
                 )
                 st.progress(pct)
 
@@ -1131,7 +1132,6 @@ def page_main() -> None:
                 if st.button("Add", key=f"goal_btn_{idx}"):
                     goal["saved"] += float(add_amount)
                     st.success("Goal updated.")
-
 
     # --- Bottom nav ---
     st.markdown("")
