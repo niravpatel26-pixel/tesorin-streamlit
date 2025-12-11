@@ -28,7 +28,11 @@ st.set_page_config(
 # ---------- BASIC THEME / GLOBAL STYLING ----------
 
 CUSTOM_CSS = """
+CUSTOM_CSS = """
 <style>
+    /* Import a Caslon-like serif font for the hero heading */
+    @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;600&display=swap');
+
     /* App background + base text */
     .stApp {
         background-color: #F5F7FB;
@@ -44,59 +48,44 @@ CUSTOM_CSS = """
         padding-bottom: 3rem;
     }
 
+    /* Top-left wordmark + tagline */
+    .tesorin-logo-word {
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+    }
+
+    .tesorin-tagline {
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin-top: 0.15rem;
+        margin-bottom: 1.4rem;
+    }
+
+    /* Big hero heading in Caslon-style serif */
+    .tesorin-hero-heading {
+        font-family: "Adobe Caslon Pro", "EB Garamond", "Times New Roman", serif;
+        font-size: 2.6rem;
+        line-height: 1.1;
+        font-weight: 400;
+        margin: 0.5rem 0 1.75rem;
+    }
+
+    .tesorin-hero-heading strong {
+        color: #16a34a;   /* calm green accent */
+        font-weight: 600;
+    }
+
     /* The pill-shaped hero card */
     .tesorin-hero-card {
         border-radius: 999px;
         padding: 1.1rem 1.75rem;
-        background: radial-gradient(circle at 0% 0%, #ecfdf5 0, #e0f2fe 40%, #ffffff 100%);
+        background: #f4fef8;
         border: 1px solid rgba(15, 23, 42, 0.06);
         box-shadow: 0 22px 40px -30px rgba(15, 23, 42, 0.55);
     }
 
-    .tesorin-cta-wrap {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-        flex-wrap: wrap;
-    }
-
-        .tesorin-hero-title {
-        font-size: 0.95rem;
-        font-weight: 600;
-        color: #ffffff;
-        margin-bottom: 0.1rem;
-    }
-
-    .tesorin-hero-subtitle {
-        font-size: 0.85rem;
-        color: #e5e7eb;
-        margin: 0;
-    }
-
-
-    .tesorin-cta-button,
-    .tesorin-cta-button:visited {
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.55rem 1.6rem;
-        border-radius: 999px;
-        background-color: #020617;
-        color: #ffffff !important;
-        font-weight: 600;
-        font-size: 0.85rem;
-        text-decoration: none !important;
-        box-shadow: 0 14px 30px -18px rgba(15, 23, 42, 0.9);
-        white-space: nowrap;
-        cursor: pointer;
-    }
-
-    .tesorin-cta-button:hover {
-        text-decoration: none !important;
-        background-color: #020617;
-        opacity: 0.92;
-    }
 
     }
 
@@ -159,10 +148,26 @@ def page_landing():
     spacer_left, main, spacer_right = st.columns([0.5, 2, 0.5])
 
     with main:
-        st.markdown("#### Tesorin")
-        st.markdown("## Your first calm money plan")
+        # Logo + tagline
+        st.markdown(
+            """
+            <div class="tesorin-logo-word">Tesorin</div>
+            <div class="tesorin-tagline">Start small. Plan big.</div>
+            """,
+            unsafe_allow_html=True,
+        )
 
-        # Hero CTA pill
+        # Caslon-style hero heading
+        st.markdown(
+            """
+            <h1 class="tesorin-hero-heading">
+              Build your first <strong>serious money plan.</strong>
+            </h1>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Hero CTA pill (keep as you already have)
         st.markdown(
             """
             <div class="tesorin-hero-card">
