@@ -74,26 +74,29 @@ CUSTOM_CSS = """
         margin: 0;
     }
 
-    .tesorin-cta-button {
+        .tesorin-cta-button,
+    .tesorin-cta-button:visited {
         display: inline-flex;
         align-items: center;
         justify-content: center;
         padding: 0.55rem 1.6rem;
         border-radius: 999px;
         background-color: #020617;
-        color: #f9fafb;
+        color: #ffffff !important;
         font-weight: 600;
         font-size: 0.85rem;
-        text-decoration: none;
+        text-decoration: none !important;
         box-shadow: 0 14px 30px -18px rgba(15, 23, 42, 0.9);
         white-space: nowrap;
+        cursor: pointer;
     }
 
     .tesorin-cta-button:hover {
-        text-decoration: none;
+        text-decoration: none !important;
         background-color: #020617;
         opacity: 0.92;
     }
+
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -473,11 +476,8 @@ def page_wealthflow():
 
 def main():
     init_state()
-    sync_screen_from_query_params()  # NEW LINE
+    sync_screen_from_query_params()
     screen = st.session_state.screen
-
-    if screen == "landing":
-        page_landing()
 
     if screen == "landing":
         page_landing()
@@ -494,6 +494,3 @@ def main():
         st.session_state.screen = "landing"
         page_landing()
 
-
-if __name__ == "__main__":
-    main()
