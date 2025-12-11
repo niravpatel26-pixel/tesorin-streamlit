@@ -581,6 +581,7 @@ def page_main() -> None:
     tab = ss.main_tab
 
     # --- HOME TAB ---
+        # --- HOME TAB ---
     if tab == "home":
         income = float(profile["income"])
         expenses = float(profile["expenses"])
@@ -592,6 +593,7 @@ def page_main() -> None:
         low_target, high_target = savings_rate_target(country, income)
         e_target = emergency_fund_target(expenses, debt)
 
+        # Prefer an explicit "Emergency fund" goal if one exists
         emergency_goal = None
         for g in ss.goal_plans:
             name = g.get("name", "").lower()
@@ -605,6 +607,7 @@ def page_main() -> None:
             em_saved = float(emergency_goal.get("saved", 0.0))
             em_ratio = max(0.0, min(1.0, em_saved / em_target))
         else:
+            # Fall back to simple rule using savings vs. suggested emergency target
             if e_target > 0:
                 em_ratio = max(0.0, min(1.0, savings / e_target))
             else:
@@ -615,7 +618,8 @@ def page_main() -> None:
         em_percent = em_ratio * 100
         cashflow_display = cashflow if cashflow > 0 else 0.0
 
-               goals_html = ""
+        # ---------- Goals snapshot HTML ----------
+        goals_html = ""
         if ss.goal_plans:
             rows = ""
             for goal in ss.goal_plans[:3]:
@@ -628,28 +632,28 @@ def page_main() -> None:
                     pct = 0
                     amounts_text = f"{currency}{saved:,.0f} saved"
 
-                rows += f"""
-<div class="tesorin-goal-row">
-  <div class="tesorin-goal-row-top">
-    <span class="tesorin-goal-name">{goal['name']}</span>
-    <span class="tesorin-goal-percent">{pct}%</span>
-  </div>
-  <div class="tesorin-goal-track">
-    <div class="tesorin-goal-fill" style="width:{pct}%;"></div>
-  </div>
-  <div class="tesorin-goal-amounts">{amounts_text}</div>
-</div>
-"""
+                # Build HTML without leading spaces so Streamlit doesn't treat it as code
+                rows += (
+                    '<div class="tesorin-goal-row">'
+                    '  <div class="tesorin-goal-row-top">'
+                    f'    <span class="tesorin-goal-name">{goal["name"]}</span>'
+                    f'    <span class="tesorin-goal-percent">{pct}%</span>'
+                    "  </div>"
+                    '  <div class="tesorin-goal-track">'
+                    f'    <div class="tesorin-goal-fill" style="width:{pct}%;"></div>'
+                    "  </div>"
+                    f'  <div class="tesorin-goal-amounts">{amounts_text}</div>'
+                    "</div>"
+                )
 
-            goals_html = f"""
-<div class="tesorin-home-goals-section">
-  <div class="tesorin-home-title" style="margin-bottom:0.25rem;">
-    Goals snapshot
-  </div>
-  {rows}
-</div>
-"""
-
+            goals_html = (
+                '<div class="tesorin-home-goals-section">'
+                '  <div class="tesorin-home-title" style="margin-bottom:0.25rem;">'
+                '    Goals snapshot'
+                "  </div>"
+                f"{rows}"
+                "</div>"
+            )
 
         home_html = f"""
         <div class="tesorin-home-card">
@@ -687,6 +691,7 @@ def page_main() -> None:
         </div>
         """
         st.markdown(home_html, unsafe_allow_html=True)
+
 
     # --- WEALTHFLOW TAB ---
     elif tab == "wealthflow":
