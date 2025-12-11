@@ -115,7 +115,7 @@ CUSTOM_CSS = """
         color: #6b7280;
     }
 
-    /* Generic light card style (used in Wealthflow) */
+    /* Generic light card style (used in Wealthflow, etc.) */
     .tesorin-card {
         border-radius: 18px;
         padding: 1.1rem 1.2rem;
@@ -231,6 +231,86 @@ CUSTOM_CSS = """
     .tesorin-home-bullets li {
         margin-bottom: 0.3rem;
     }
+
+    /* ---- Goals inside the dark Home card ---- */
+
+    .tesorin-home-goals-section {
+        margin-top: 1.1rem;
+        padding-top: 0.8rem;
+        border-top: 1px solid rgba(148, 163, 184, 0.45);
+    }
+
+    .tesorin-goal-row {
+        margin-top: 0.55rem;
+    }
+
+    .tesorin-goal-row-top {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        color: #e5e7eb;
+    }
+
+    .tesorin-goal-name {
+        font-weight: 500;
+    }
+
+    .tesorin-goal-percent {
+        color: #cbd5f5;
+        font-size: 0.78rem;
+    }
+
+    .tesorin-goal-track {
+        width: 100%;
+        height: 5px;
+        border-radius: 999px;
+        background-color: #020617;
+        overflow: hidden;
+        margin: 0.35rem 0 0.25rem;
+    }
+
+    .tesorin-goal-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(to right, #22c55e, #a855f7);
+    }
+
+    .tesorin-goal-amounts {
+        font-size: 0.75rem;
+        color: #9ca3af;
+    }
+
+    /* ---------- WEALTHFLOW (WALLETS) ---------- */
+
+    .tesorin-wallet-card {
+        border-radius: 16px;
+        padding: 0.9rem 1.0rem;
+        background-color: #ffffff;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        box-shadow: 0 18px 40px -32px rgba(15, 23, 42, 0.5);
+    }
+
+    .tesorin-wallet-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .tesorin-wallet-balance {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-top: 0.25rem;
+    }
+
+    .tesorin-wallet-meta {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
+</style>
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
 
     /* ---------- WEALTHFLOW (WALLETS) ---------- */
 
@@ -563,6 +643,9 @@ def page_main() -> None:
 
     # --- HOME TAB ---
         # --- HOME TAB ---
+       tab = ss.main_tab
+
+    # --- HOME TAB ---
     if tab == "home":
         income = float(profile["income"])
         expenses = float(profile["expenses"])
@@ -575,16 +658,71 @@ def page_main() -> None:
         low_target, high_target = savings_rate_target(country, income)
         e_target = emergency_fund_target(expenses, debt)
 
-        # Emergency fund progress
-        if e_target > 0:
-            funded_ratio = max(0.0, min(1.0, savings / e_target))
+        # ---- Emergency fund progress: first try to use an Emergency Fund goal ----
+        emergency_goal = None
+        for g in ss.goal_plans:
+            name = g.get("name", "").lower()
+            kind = g.get("kind", "").lower()
+            if "emergency" in name or "emergency" in kind:
+                emergency_goal = g
+                break
+
+        if emergency_goal and emergency_goal.get("target", 0) > 0:
+            em_target = float(emergency_goal["target"])
+            em_saved = float(emergency_goal.get("saved", 0.0))
+            em_ratio = max(0.0, min(1.0, em_saved / em_target))
         else:
-            funded_ratio = 0.0
-        funded_percent = funded_ratio * 100
+            # Fallback: use simple rule based on current savings vs emergency target
+            if e_target > 0:
+                em_ratio = max(0.0, min(1.0, savings / e_target))
+            else:
+                em_ratio = 0.0
+            em_target = float(e_target)
+            em_saved = float(savings)
+
+        em_percent = em_ratio * 100
 
         # Clamp displayed cashflow at 0 if negative
         cashflow_display = cashflow if cashflow > 0 else 0.0
 
+        # ---- Goals snapshot inside the dark card ----
+        goals_html = ""
+        if ss.goal_plans:
+            rows = ""
+            # Show up to 3 goals (including emergency if it exists)
+            for goal in ss.goal_plans[:3]:
+                target = float(goal.get("target", 0.0) or 0.0)
+                saved = float(goal.get("saved", 0.0) or 0.0)
+                if target > 0:
+                    pct = int(min(100, max(0, saved / target * 100)))
+                    amounts_text = f"{currency}{saved:,.0f} / {currency}{target:,.0f}"
+                else:
+                    pct = 0
+                    amounts_text = f"{currency}{saved:,.0f} saved"
+
+                rows += f"""
+                <div class="tesorin-goal-row">
+                  <div class="tesorin-goal-row-top">
+                    <span class="tesorin-goal-name">{goal['name']}</span>
+                    <span class="tesorin-goal-percent">{pct}%</span>
+                  </div>
+                  <div class="tesorin-goal-track">
+                    <div class="tesorin-goal-fill" style="width:{pct}%;"></div>
+                  </div>
+                  <div class="tesorin-goal-amounts">{amounts_text}</div>
+                </div>
+                """
+
+            goals_html = f"""
+            <div class="tesorin-home-goals-section">
+              <div class="tesorin-home-title" style="margin-bottom:0.25rem;">
+                Goals snapshot
+              </div>
+              {rows}
+            </div>
+            """
+
+        # ---- Final dark card HTML ----
         home_html = f"""
         <div class="tesorin-home-card">
           <div class="tesorin-home-title">Monthly cash flow after expenses</div>
@@ -599,13 +737,15 @@ def page_main() -> None:
           <div class="tesorin-home-em-card">
             <div class="tesorin-home-em-header">
               <span class="tesorin-home-em-label">Emergency fund</span>
-              <span class="tesorin-home-em-percent">{funded_percent:.0f}% funded</span>
+              <span class="tesorin-home-em-percent">{em_percent:.0f}% funded</span>
             </div>
             <div class="tesorin-home-em-track">
-              <div class="tesorin-home-em-fill" style="width: {funded_percent:.0f}%;"></div>
+              <div class="tesorin-home-em-fill" style="width: {em_percent:.0f}%;"></div>
             </div>
             <div class="tesorin-home-em-copy">
               Track key goals — safety buffer, debt payoff, and long-term investing — in one calm view.
+              <br />
+              Current buffer: {currency}{em_saved:,.0f} / {currency}{em_target:,.0f}
             </div>
           </div>
 
@@ -614,30 +754,13 @@ def page_main() -> None:
             <li>Built for people taking money seriously for the first time.</li>
             <li>Designed for beginners — no trading screen, no product push, just planning.</li>
           </ul>
+
+          {goals_html}
         </div>
         """
 
         st.markdown(home_html, unsafe_allow_html=True)
 
-        # Extra card: 2–3 tracked goals
-        if ss.goal_plans:
-            st.markdown('<div class="tesorin-card"><h4>Goals snapshot</h4>', unsafe_allow_html=True)
-
-            for goal in ss.goal_plans[:3]:  # show up to 3
-                target = goal.get("target", 0.0) or 0.0
-                saved = goal.get("saved", 0.0) or 0.0
-                if target > 0:
-                    pct = int(min(100, max(0, saved / target * 100)))
-                    st.caption(
-                        f"{goal['name']}: {currency}{saved:,.0f} / {currency}{target:,.0f} ({pct}%)"
-                    )
-                    st.progress(pct)
-                else:
-                    st.caption(
-                        f"{goal['name']}: {currency}{saved:,.0f} saved so far (no target set yet)"
-                    )
-
-            st.markdown("</div>", unsafe_allow_html=True)
 
 
     # --- WEALTHFLOW TAB ---
