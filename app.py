@@ -1,5 +1,5 @@
-# app.py
 import streamlit as st
+
 from logic import (
     calculate_cashflow,
     calculate_net_worth,
@@ -8,16 +8,17 @@ from logic import (
     savings_rate_target,
     allocate_monthly_plan,
 )
+
 from supabase_client import (
     is_configured,
     save_profile,
-    load_profile,
     sign_up,
     sign_in,
     sign_out,
 )
 
-# ---- PAGE CONFIG ----
+# ---------- PAGE CONFIG ----------
+
 st.set_page_config(
     page_title="Tesorin – First Step Planner",
     page_icon="favicon.ico",
@@ -27,19 +28,24 @@ st.set_page_config(
 
 # ---------- SMALL HELPERS ----------
 
-def get_currency(country_code: str) -> str:
+
+def get_currency(country_code):
+    """Return currency symbol for a given country code."""
     if country_code == "IN":
         return "₹"
     return "$"
 
 
 def init_state():
-    """Ensure all the keys we use exist in session_state."""
+    """Initialise all keys in session_state that we use."""
     ss = st.session_state
-    if "route" not in ss:
-        ss.route = "landing"
+
+    if "screen" not in ss:
+        ss.screen = "landing"  # landing, signup, login, country_profile, wealthflow
+
     if "user" not in ss:
-        ss.user = None
+        ss.user = None  # dict with email/name once signed in
+
     if "profile" not in ss:
         ss.profile = {
             "country": "IN",
@@ -53,131 +59,76 @@ def init_state():
         }
 
 
-def go(route: str):
-    """Simple navigation helper."""
-    st.session_state.route = route
-    st.experimental_rerun()
-
-
-def auth_required():
-    """If no user, send them to landing/login."""
-    if st.session_state.user is None:
-        go("landing")
-
-
-def app_header(show_back_home: bool = False):
-    """Top bar used on inner pages."""
-    cols = st.columns([3, 1])
-    with cols[0]:
-        st.markdown("### Tesorin · First Step")
-        st.caption("Your calm first step into serious money planning.")
-    with cols[1]:
-        if st.session_state.user:
-            st.write(
-                f"Signed in as **{st.session_state.user.get('name') or st.session_state.user.get('email')}**"
-            )
-            if st.button("Log out", key="logout_btn", use_container_width=True):
-                sign_out()
-                st.session_state.user = None
-                go("landing")
-        else:
-            if st.button("Log in", key="header_login", use_container_width=True):
-                go("login")
-
-
 # ---------- SCREENS ----------
 
-def page_landing():
-    init_state()
 
+def page_landing():
+    """First screen: simple hero + Sign up / Log in buttons."""
+    st.markdown("### Tesorin · First Step")
     st.markdown(
-        """
-        <style>
-        .tesorin-hero {
-            padding: 60px 0 40px 0;
-            text-align: center;
-        }
-        .tesorin-hero h1 {
-            font-size: 42px;
-            margin-bottom: 10px;
-        }
-        .tesorin-hero p {
-            color: #6b7280;
-            font-size: 15px;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True,
+        "**Build your first serious money plan** with a calm, simple view of your "
+        "cashflow, safety buffer and goals."
     )
 
-    with st.container():
-        st.markdown('<div class="tesorin-hero">', unsafe_allow_html=True)
-        st.markdown("#### Tesorin · First Step")
-        st.markdown("## Build your first serious money plan — calmly.")
-        st.markdown(
-            "A simple starting point to understand your **cashflow**, "
-            "**safety buffer**, and **goals** without trading screens or noise."
-        )
-        st.markdown("</div>", unsafe_allow_html=True)
-
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("Sign up", use_container_width=True):
-            go("signup")
-    with c2:
-        if st.button("Log in", use_container_width=True):
-            go("login")
+    st.write(
+        "Tesorin is for people who are taking money seriously for the first time – "
+        "without trading screens or hype."
+    )
 
     st.markdown("---")
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Sign up", use_container_width=True):
+            st.session_state.screen = "signup"
+
+    with col2:
+        if st.button("Log in", use_container_width=True):
+            st.session_state.screen = "login"
+
     st.caption(
-        "No real investing or bank connections yet – this is an early planning preview."
+        "Later, this screen can show moving images / tiny stories about Tesorin "
+        "like in your Figma sketch."
     )
 
 
 def page_signup():
-    init_state()
+    """Sign-up form: name (optional), email, password, terms."""
+    st.markdown("### Create your Tesorin account")
 
-    app_header()
-
-    st.markdown("## Create your Tesorin account")
-    st.write("Start with a simple login. You can use a nickname if you like.")
-
-    with st.form("signup_form"):
+    with st.form("signup_form", clear_on_submit=False):
         name = st.text_input("Preferred name (optional)")
         email = st.text_input("Email")
         password = st.text_input("Password", type="password")
-        agree = st.checkbox(
-            "I understand this is an early beta and not financial advice.", value=True
-        )
+        agree = st.checkbox("I agree to the terms and conditions")
+
         submitted = st.form_submit_button("Sign up")
 
     if submitted:
         if not email or not password:
             st.error("Email and password are required.")
-        elif not agree:
-            st.error("Please accept the beta notice to continue.")
-        else:
-            ok, msg = sign_up(email, password, name)
-            if not ok:
-                st.error(msg or "Sign up failed.")
-            else:
-                st.success("Account created. You're now signed in.")
-                st.session_state.user = {"email": email, "name": name}
-                go("country")
+            return
 
-    st.write("Already have an account?")
-    if st.button("Go to Log in", key="go_login_from_signup"):
-        go("login")
+        if not agree:
+            st.error("Please agree to the terms to continue.")
+            return
+
+        ok, err = sign_up(email, password, name=name or None)
+        if not ok:
+            st.error(err or "Could not sign up right now.")
+            return
+
+        # Fake user object, real app would use returned Supabase user
+        st.session_state.user = {"email": email, "name": name or email.split("@")[0]}
+        st.session_state.screen = "country_profile"
+        st.success("Account created. Let’s set your country and basic profile.")
 
 
 def page_login():
-    init_state()
-    app_header()
+    """Log-in form: email, password."""
+    st.markdown("### Welcome back")
 
-    st.markdown("## Welcome back")
-    st.write("Log in to continue your Tesorin plan.")
-
-    with st.form("login_form"):
+    with st.form("login_form", clear_on_submit=False):
         email = st.text_input("Email")
         password = st.text_input("Password", type="password")
         submitted = st.form_submit_button("Log in")
@@ -185,41 +136,36 @@ def page_login():
     if submitted:
         if not email or not password:
             st.error("Email and password are required.")
-        else:
-            ok, user_or_msg = sign_in(email, password)
-            if not ok:
-                st.error(user_or_msg or "Login failed.")
-            else:
-                st.session_state.user = user_or_msg
-                # later: load profile from Supabase if configured
-                if is_configured():
-                    loaded = load_profile(email)
-                    if loaded:
-                        st.session_state.profile = loaded
-                go("dashboard")
+            return
 
-    if st.button("Forgot password? (placeholder)", key="forgot"):
-        st.info(
-            "In a future version this will send a reset email. For now, use any password you like – "
-            "auth is still local-only."
-        )
+        ok, user_or_error = sign_in(email, password)
+        if not ok:
+            st.error(user_or_error or "Login failed.")
+            return
 
-    st.write("New to Tesorin?")
-    if st.button("Go to Sign up", key="go_signup_from_login"):
-        go("signup")
+        st.session_state.user = user_or_error
+        st.session_state.screen = "country_profile"
+        st.success("Logged in. Let’s confirm your country & profile.")
+
+    if st.button("Back to start", type="secondary"):
+        st.session_state.screen = "landing"
 
 
-def page_country():
-    init_state()
-    auth_required()
-    app_header(show_back_home=True)
+def page_country_profile():
+    """Ask for country and age before going into wealthflow."""
+    st.markdown("### 1. Country & basic profile")
 
-    st.markdown("## Step 1 · Choose your primary country")
-    st.write("This helps set default currencies and savings ranges.")
+    ss = st.session_state
+    profile = ss.profile
+
+    # Show who is logged in
+    if ss.user:
+        st.caption(f"Signed in as **{ss.user.get('name', ss.user['email'])}**")
 
     country_display = st.selectbox(
         "Where do you manage your money?",
         ["🇮🇳 India", "🇨🇦 Canada"],
+        index=0 if profile["country"] == "IN" else 1,
     )
 
     if "India" in country_display:
@@ -227,398 +173,210 @@ def page_country():
     else:
         country = "CA"
 
-    st.session_state.profile["country"] = country
-
-    if st.button("Next: Basic profile", use_container_width=True):
-        go("profile")
-
-
-def page_profile():
-    init_state()
-    auth_required()
-    app_header(show_back_home=True)
-
-    profile = st.session_state.profile
-    country = profile["country"]
-    currency = get_currency(country)
-
-    st.markdown("## Step 2 · Basic profile & cashflow")
-    st.write("Approximate numbers are fine – this is a planning tool, not a tax return.")
-
     age = st.slider("Age", min_value=18, max_value=60, value=profile["age"])
-    income = st.number_input(
-        f"Monthly income ({currency})",
-        min_value=0.0,
-        step=1000.0,
-        value=float(profile["income"]),
-    )
-    expenses = st.number_input(
-        f"Monthly expenses ({currency})",
-        min_value=0.0,
-        step=1000.0,
-        value=float(profile["expenses"]),
-    )
-    savings = st.number_input(
-        f"Current savings ({currency})",
-        min_value=0.0,
-        step=1000.0,
-        value=float(profile["savings"]),
-    )
-    debt = st.number_input(
-        f"Current debt ({currency})",
-        min_value=0.0,
-        step=1000.0,
-        value=float(profile["debt"]),
-    )
 
-    high_interest_debt = st.checkbox(
-        "My main debt is high-interest (credit cards, >12–15%)",
-        value=profile["high_interest_debt"],
-    )
+    if st.button("Continue to Wealth Flow", type="primary"):
+        ss.profile["country"] = country
+        ss.profile["age"] = age
+        ss.screen = "wealthflow"
+        st.success("Saved. Now let’s look at your cashflow and goals.")
 
-    if st.button("Next: Goals", use_container_width=True):
-        profile.update(
-            {
-                "age": age,
-                "income": income,
-                "expenses": expenses,
-                "savings": savings,
-                "debt": debt,
-                "high_interest_debt": high_interest_debt,
-            }
-        )
-        st.session_state.profile = profile
-        if is_configured():
-            save_profile(profile)
-        go("goals")
+    if st.button("Log out", type="secondary"):
+        sign_out()
+        ss.user = None
+        ss.screen = "landing"
 
 
-def page_goals():
-    init_state()
-    auth_required()
-    app_header(show_back_home=True)
+def page_wealthflow():
+    """Main planner screen – your existing cashflow + goals + snapshot."""
 
-    profile = st.session_state.profile
-
-    st.markdown("## Step 3 · Goals")
-    st.write(
-        "Pick what matters most right now. You can refine these later in the Goals view."
-    )
-
-    goals = st.multiselect(
-        "Top goals (pick up to 3 for now)",
-        [
-            "Emergency fund",
-            "House",
-            "Car",
-            "Travel",
-            "Education",
-            "Wedding",
-            "Retirement",
-        ],
-        default=profile.get("goals", []),
-    )
-
-    if st.button("Finish setup and go to dashboard", use_container_width=True):
-        profile["goals"] = goals
-        st.session_state.profile = profile
-        if is_configured():
-            save_profile(profile)
-        go("dashboard")
-
-
-def page_dashboard():
-    init_state()
-    auth_required()
-    app_header()
-
-    profile = st.session_state.profile
+    ss = st.session_state
+    profile = ss.profile
     country = profile["country"]
     currency = get_currency(country)
 
-    income = profile["income"]
-    expenses = profile["expenses"]
-    savings = profile["savings"]
-    debt = profile["debt"]
-    high_interest_debt = profile["high_interest_debt"]
+    st.markdown("### Tesorin · First Step")
+    st.caption(
+        "This is your v0.1 planner – focused on basic inputs, emergency fund and simple monthly allocations."
+    )
 
-    cashflow = calculate_cashflow(income, expenses)
-    net_worth = calculate_net_worth(savings, debt)
-    savings_rate = calculate_savings_rate(income, cashflow)
-    low_target, high_target = savings_rate_target(country, income)
+    with st.container():
+        left, right = st.columns([3, 2])
 
-    st.markdown("## Home")
+        # ---- LEFT: inputs ----
+        with left:
+            st.subheader("2. Wealth flow · income, expenses & goals")
 
-    # Main three cards
-    c1, c2, c3 = st.columns(3)
-
-    with c1:
-        st.markdown("#### Monthly cashflow")
-        st.metric("Cash after expenses", f"{currency}{cashflow:,.0f}")
-        st.caption("Income minus your monthly expenses.")
-
-    with c2:
-        st.markdown("#### Financial health snapshot")
-        st.metric("Net worth", f"{currency}{net_worth:,.0f}")
-        if high_target > 0:
-            st.caption(
-                f"Target savings range: **{low_target:.0f}%–{high_target:.0f}%** of income."
+            income = st.number_input(
+                f"Monthly income ({currency})",
+                min_value=0.0,
+                step=1000.0,
+                value=float(profile["income"]),
             )
-        st.caption(f"Current savings rate: **{savings_rate:.1f}%** of income.")
+            expenses = st.number_input(
+                f"Monthly expenses ({currency})",
+                min_value=0.0,
+                step=1000.0,
+                value=float(profile["expenses"]),
+            )
+            savings = st.number_input(
+                f"Current savings ({currency})",
+                min_value=0.0,
+                step=1000.0,
+                value=float(profile["savings"]),
+            )
+            debt = st.number_input(
+                f"Current debt ({currency})",
+                min_value=0.0,
+                step=1000.0,
+                value=float(profile["debt"]),
+            )
 
-    with c3:
-        st.markdown("#### Goal tracker")
-        goals = profile.get("goals") or []
-        if goals:
-            st.write("Current focus:")
-            for g in goals[:3]:
-                st.write(f"• {g}")
-        else:
-            st.caption("No goals selected yet – add some to make the plan meaningful.")
+            high_interest_debt = st.checkbox(
+                "My main debt is high-interest (credit cards, >12–15%)",
+                value=bool(profile["high_interest_debt"]),
+            )
 
-    st.markdown("---")
+            st.markdown("### 3. Top goals (you can refine later)")
+            goals = st.multiselect(
+                "What are your top goals right now?",
+                [
+                    "Emergency fund",
+                    "House",
+                    "Car",
+                    "Travel",
+                    "Education",
+                    "Wedding",
+                    "Retirement",
+                ],
+                default=profile.get("goals", []),
+            )
 
-    # Emergency fund + plan preview
-    left, right = st.columns(2)
+            if st.button("Save this as my current snapshot"):
+                ss.profile.update(
+                    {
+                        "income": income,
+                        "expenses": expenses,
+                        "savings": savings,
+                        "debt": debt,
+                        "high_interest_debt": high_interest_debt,
+                        "goals": goals,
+                    }
+                )
 
-    with left:
-        st.markdown("### Emergency fund")
-        e_target = emergency_fund_target(expenses, debt)
-        e_gap = max(e_target - savings, 0)
-        monthly_fill = e_gap / 12 if e_gap > 0 else 0
+                # (Optional) later send to Supabase
+                if is_configured():
+                    save_profile(ss.profile)
 
-        st.write(
-            f"Suggested safety buffer: **{currency}{e_target:,.0f}** "
-            f"(based on your monthly expenses)."
-        )
-        if e_gap > 0:
+                st.success("Snapshot saved. The numbers on the right are now updated.")
+
+        # ---- RIGHT: snapshot ----
+        with right:
+            st.subheader("Quick snapshot")
+
+            # Use most recent values from the UI (not old profile values)
+            cashflow = calculate_cashflow(income, expenses)
+            net_worth = calculate_net_worth(savings, debt)
+            savings_rate = calculate_savings_rate(income, cashflow)
+
+            c1, c2 = st.columns(2)
+            with c1:
+                st.metric("Net worth", f"{currency}{net_worth:,.0f}")
+            with c2:
+                st.metric("Monthly free cash", f"{currency}{cashflow:,.0f}")
+
+            low_target, high_target = savings_rate_target(country, income)
+            if high_target > 0:
+                st.caption(
+                    f"Target savings range for you: **{low_target:.0f}%–{high_target:.0f}%** of income."
+                )
+
+            bar_value = max(min(int(savings_rate), 100), 0)
+            st.progress(bar_value if bar_value > 0 else 0)
+            st.caption(f"Current savings rate: **{savings_rate:.1f}%** of income.")
+
+            st.markdown("---")
+            st.markdown("### Emergency fund (v0.1 rule)")
+
+            e_target = emergency_fund_target(expenses, debt)
+            e_gap = max(e_target - savings, 0)
+            monthly_fill = e_gap / 12 if e_gap > 0 else 0
+
             st.write(
-                f"If you put around **{currency}{monthly_fill:,.0f} per month** aside "
-                "for a year, you’d fully fund this buffer."
+                f"Suggested safety buffer: **{currency}{e_target:,.0f}** "
+                f"(based on your monthly expenses)."
             )
-        else:
-            st.success("Your current savings already cover this simple buffer rule.")
+            if e_gap > 0:
+                st.write(
+                    f"If you put around **{currency}{monthly_fill:,.0f} per month** aside for a year, "
+                    "you’d fully fund this buffer."
+                )
+            else:
+                st.success("Your current savings already cover this simple buffer rule.")
 
-    with right:
-        st.markdown("### Example monthly allocation")
-        plan = allocate_monthly_plan(
-            income=income,
-            expenses=expenses,
-            country=country,
-            debt=debt,
-            high_interest_debt=high_interest_debt,
-        )
-        rec = plan["recommended_saving"]
-        if rec > 0:
-            st.caption(
-                f"Recommended monthly saving (target vs. cashflow): **{currency}{rec:,.0f}**"
+            st.markdown("### Example monthly allocation")
+            plan = allocate_monthly_plan(
+                income=income,
+                expenses=expenses,
+                country=country,
+                debt=debt,
+                high_interest_debt=high_interest_debt,
             )
-            st.bar_chart(
-                {
-                    "Emergency": [plan["emergency"]],
-                    "Investing": [plan["investing"]],
-                    "Debt payoff": [plan["debt"]],
-                }
-            )
-        else:
-            st.info(
-                "Cashflow is not positive yet. Small fixes on income/spending will make the plan more useful."
-            )
+            rec = plan["recommended_saving"]
+            if rec > 0:
+                st.caption(
+                    f"Recommended monthly saving (target vs. cashflow): **{currency}{rec:,.0f}**"
+                )
+                st.bar_chart(
+                    {
+                        "Emergency": [plan["emergency"]],
+                        "Investing": [plan["investing"]],
+                        "Debt": [plan["debt"]],
+                    }
+                )
+            else:
+                st.info(
+                    "Cashflow is not positive yet. Small fixes on income/spending will make the plan more useful."
+                )
 
     st.markdown("---")
+    col_left, col_right = st.columns([1, 1])
+    with col_left:
+        if st.button("Back to country & profile", type="secondary"):
+            st.session_state.screen = "country_profile"
 
-    # Bottom nav (simple buttons that change route)
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        if st.button("Wealth flow", use_container_width=True):
-            go("wealth_flow")
-    with c2:
-        if st.button("Plan details", use_container_width=True):
-            go("plan")
-    with c3:
-        if st.button("Settings", use_container_width=True):
-            go("settings")
-
-
-def page_wealth_flow():
-    init_state()
-    auth_required()
-    app_header(show_back_home=True)
-
-    profile = st.session_state.profile
-    country = profile["country"]
-    currency = get_currency(country)
-
-    st.markdown("## Wealth flow")
-    st.write("A simple place to review and tweak your income and expenses.")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        income = st.number_input(
-            f"Monthly income ({currency})",
-            min_value=0.0,
-            step=1000.0,
-            value=float(profile["income"]),
-        )
-        expenses = st.number_input(
-            f"Monthly expenses ({currency})",
-            min_value=0.0,
-            step=1000.0,
-            value=float(profile["expenses"]),
-        )
-
-    with col2:
-        savings = st.number_input(
-            f"Current savings ({currency})",
-            min_value=0.0,
-            step=1000.0,
-            value=float(profile["savings"]),
-        )
-        debt = st.number_input(
-            f"Current debt ({currency})",
-            min_value=0.0,
-            step=1000.0,
-            value=float(profile["debt"]),
-        )
-
-    if st.button("Save changes", use_container_width=True):
-        profile.update(
-            {
-                "income": income,
-                "expenses": expenses,
-                "savings": savings,
-                "debt": debt,
-            }
-        )
-        st.session_state.profile = profile
-        if is_configured():
-            save_profile(profile)
-        st.success("Wealth flow updated.")
-    if st.button("Back to dashboard", use_container_width=True):
-        go("dashboard")
-
-
-def page_plan():
-    init_state()
-    auth_required()
-    app_header(show_back_home=True)
-
-    profile = st.session_state.profile
-    country = profile["country"]
-    currency = get_currency(country)
-
-    st.markdown("## Next step plan")
-
-    income = profile["income"]
-    expenses = profile["expenses"]
-    savings = profile["savings"]
-    debt = profile["debt"]
-    high_interest_debt = profile["high_interest_debt"]
-
-    cashflow = calculate_cashflow(income, expenses)
-    plan = allocate_monthly_plan(
-        income=income,
-        expenses=expenses,
-        country=country,
-        debt=debt,
-        high_interest_debt=high_interest_debt,
-    )
-
-    st.write(
-        f"Each month you have **{currency}{cashflow:,.0f}** after expenses. "
-        "Here’s a calm suggestion for where it might go:"
-    )
-
-    st.table(
-        {
-            "Bucket": ["Emergency buffer", "Investing", "Debt payoff"],
-            "Suggested monthly amount": [
-                f"{currency}{plan['emergency']:,.0f}",
-                f"{currency}{plan['investing']:,.0f}",
-                f"{currency}{plan['debt']:,.0f}",
-            ],
-        }
-    )
+    with col_right:
+        if st.button("Log out", type="secondary"):
+            sign_out()
+            st.session_state.user = None
+            st.session_state.screen = "landing"
 
     st.caption(
-        "These are simple rules of thumb, not personal financial advice. "
-        "You’ll tune them over time as your situation changes."
+        "Later, you’ll have separate pages for Dashboard, Goals, Plan, Learn, and Settings – "
+        "all powered by this snapshot."
     )
 
-    if st.button("Back to dashboard", use_container_width=True):
-        go("dashboard")
 
+# ---------- MAIN ROUTER ----------
 
-def page_settings():
-    init_state()
-    auth_required()
-    app_header(show_back_home=True)
-
-    st.markdown("## Settings & profile")
-
-    profile = st.session_state.profile
-
-    st.write("You can tweak a few basics here. More settings will come later.")
-
-    name = st.text_input(
-        "Display name",
-        value=(st.session_state.user or {}).get("name", ""),
-    )
-    goals = st.multiselect(
-        "Goals",
-        [
-            "Emergency fund",
-            "House",
-            "Car",
-            "Travel",
-            "Education",
-            "Wedding",
-            "Retirement",
-        ],
-        default=profile.get("goals", []),
-    )
-
-    if st.button("Save settings", use_container_width=True):
-        st.session_state.user["name"] = name
-        profile["goals"] = goals
-        st.session_state.profile = profile
-        if is_configured():
-            save_profile(profile)
-        st.success("Settings saved.")
-
-    if st.button("Back to dashboard", use_container_width=True):
-        go("dashboard")
-
-
-# ---------- ROUTER ----------
 
 def main():
     init_state()
+    screen = st.session_state.screen
 
-    route = st.session_state.route
-
-    if route == "landing":
+    if screen == "landing":
         page_landing()
-    elif route == "signup":
+    elif screen == "signup":
         page_signup()
-    elif route == "login":
+    elif screen == "login":
         page_login()
-    elif route == "country":
-        page_country()
-    elif route == "profile":
-        page_profile()
-    elif route == "goals":
-        page_goals()
-    elif route == "dashboard":
-        page_dashboard()
-    elif route == "wealth_flow":
-        page_wealth_flow()
-    elif route == "plan":
-        page_plan()
-    elif route == "settings":
-        page_settings()
+    elif screen == "country_profile":
+        page_country_profile()
+    elif screen == "wealthflow":
+        page_wealthflow()
     else:
-        # fallback
+        # Fallback – shouldn't happen
+        st.session_state.screen = "landing"
         page_landing()
 
 
