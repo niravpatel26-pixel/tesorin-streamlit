@@ -32,7 +32,6 @@ CUSTOM_CSS = """
     /* Import a Caslon-like serif font for the hero heading */
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&display=swap');
 
-
     /* App background + base text */
     .stApp {
         background-color: #F5F7FB;
@@ -48,7 +47,7 @@ CUSTOM_CSS = """
         padding-bottom: 3rem;
     }
 
-    /* Top-left wordmark + tagline */
+    /* Top-left wordmark + tagline on landing */
     .tesorin-logo-word {
         font-weight: 600;
         letter-spacing: 0.04em;
@@ -63,7 +62,7 @@ CUSTOM_CSS = """
         margin-bottom: 1.4rem;
     }
 
-        /* Big hero heading in Caslon-like serif */
+    /* Big hero heading in Caslon-like serif */
     .tesorin-hero-heading {
         font-family: "Adobe Caslon Pro", "Cormorant Garamond", "Times New Roman", serif;
         font-size: 2.7rem;
@@ -78,19 +77,67 @@ CUSTOM_CSS = """
         font-weight: 600;
     }
 
+    /* In-app top bar for main planner */
+    .tesorin-appbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 0 1.1rem;
+    }
 
-    /* The pill-shaped hero card */
-    .tesorin-hero-card {
+    .tesorin-appbar-left {
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+    }
+
+    .tesorin-app-icon {
+        width: 32px;
+        height: 32px;
         border-radius: 999px;
-        padding: 1.1rem 1.75rem;
-        background: #f4fef8;
-        border: 1px solid rgba(15, 23, 42, 0.06);
-        box-shadow: 0 22px 40px -30px rgba(15, 23, 42, 0.55);
+        background-color: #020617;
+        color: #f9fafb;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 0.9rem;
     }
 
-
+    .tesorin-app-title {
+        font-weight: 600;
+        font-size: 0.95rem;
     }
 
+    .tesorin-app-subtitle {
+        font-size: 0.8rem;
+        color: #6b7280;
+    }
+
+    /* Simple bottom nav labels (if we want text under icons later) */
+    .tesorin-nav-label {
+        font-size: 0.8rem;
+        color: #4b5563;
+        text-align: center;
+        margin-top: 0.15rem;
+    }
+
+    /* Generic card style (can be used later on Home) */
+    .tesorin-card {
+        border-radius: 18px;
+        padding: 1.1rem 1.2rem;
+        background-color: #ffffff;
+        border: 1px solid rgba(15, 23, 42, 0.04);
+        box-shadow: 0 16px 40px -30px rgba(15, 23, 42, 0.55);
+        margin-bottom: 1rem;
+    }
+
+    .tesorin-card h4 {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+        font-size: 0.95rem;
+        font-weight: 600;
+    }
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -99,23 +146,27 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 # ---------- SMALL HELPERS ----------
 
 
-def get_currency(country_code):
+def get_currency(country_code: str) -> str:
     """Return currency symbol for a given country code."""
     if country_code == "IN":
         return "₹"
     return "$"
 
 
-def init_state():
+def init_state() -> None:
     """Initialise all keys in session_state that we use."""
     ss = st.session_state
 
+    # Which big screen are we on?
+    # landing, signup, login, country_profile, main (logged-in app shell)
     if "screen" not in ss:
-        ss.screen = "landing"  # landing, signup, login, country_profile, wealthflow
+        ss.screen = "landing"
 
+    # Who is logged in (if anyone)?
     if "user" not in ss:
         ss.user = None  # dict with email/name once signed in
 
+    # Basic profile + numbers used by the planner
     if "profile" not in ss:
         ss.profile = {
             "country": "IN",
@@ -128,7 +179,12 @@ def init_state():
             "goals": [],
         }
 
-def sync_screen_from_query_params():
+    # Which tab inside the app shell are we on? (home, wealthflow, next)
+    if "main_tab" not in ss:
+        ss.main_tab = "home"
+
+
+def sync_screen_from_query_params() -> None:
     """
     Let the URL control which screen is open, so links like ?screen=signup work.
     """
@@ -138,14 +194,15 @@ def sync_screen_from_query_params():
         return
 
     screen_from_url = raw[0]
-    valid = {"landing", "signup", "login", "country_profile", "wealthflow"}
+    valid = {"landing", "signup", "login", "country_profile", "main"}
     if screen_from_url in valid:
         st.session_state.screen = screen_from_url
+
 
 # ---------- SCREENS ----------
 
 
-def page_landing():
+def page_landing() -> None:
     """First screen: simple hero + Sign up / Log in buttons."""
     spacer_left, main, spacer_right = st.columns([0.5, 2, 0.5])
 
@@ -180,9 +237,8 @@ def page_landing():
                 st.session_state.screen = "login"
 
 
-def page_signup():
+def page_signup() -> None:
     """Sign-up form: name (optional), email, password, terms."""
-
     spacer_left, main, spacer_right = st.columns([1, 2, 1])
     with main:
         st.markdown("### Create your Tesorin account")
@@ -219,9 +275,8 @@ def page_signup():
             st.session_state.screen = "landing"
 
 
-def page_login():
+def page_login() -> None:
     """Log-in form: email, password."""
-
     spacer_left, main, spacer_right = st.columns([1, 2, 1])
     with main:
         st.markdown("### Welcome back")
@@ -250,12 +305,12 @@ def page_login():
             st.session_state.screen = "landing"
 
 
-def page_country_profile():
-    """Ask for country and age before going into wealthflow."""
-    st.markdown("### 1. Country & basic profile")
-
+def page_country_profile() -> None:
+    """Ask for country and age before going into the main app shell."""
     ss = st.session_state
     profile = ss.profile
+
+    st.markdown("### 1. Country & basic profile")
 
     # Show who is logged in
     if ss.user:
@@ -274,11 +329,12 @@ def page_country_profile():
 
     age = st.slider("Age", min_value=18, max_value=60, value=profile["age"])
 
-    if st.button("Continue to Wealth Flow", type="primary"):
+    if st.button("Continue to your planner", type="primary"):
         ss.profile["country"] = country
         ss.profile["age"] = age
-        ss.screen = "wealthflow"
-        st.success("Saved. Now let’s look at your cashflow and goals.")
+        ss.screen = "main"
+        ss.main_tab = "home"  # always land on Home first
+        st.success("Saved. Now let’s look at your planner.")
 
     if st.button("Log out", type="secondary"):
         sign_out()
@@ -286,214 +342,145 @@ def page_country_profile():
         ss.screen = "landing"
 
 
-def page_wealthflow():
-    """Main planner screen – inputs on the left, 3 cards on the right."""
+# ---------- MAIN APP SHELL (HOME / WEALTHFLOW / NEXT) ----------
 
+
+def page_main() -> None:
+    """Main app shell with 3 tabs: Home / Wealthflow / Next step."""
     ss = st.session_state
     profile = ss.profile
     country = profile["country"]
     currency = get_currency(country)
 
-    st.markdown("### Tesorin · Wealthflow")
-    st.caption(
-        "This v0.1 planner focuses on your cashflow, a simple emergency buffer, "
-        "and a first pass at how to split your monthly surplus."
+    # App-style top bar
+    st.markdown(
+        """
+        <div class="tesorin-appbar">
+          <div class="tesorin-appbar-left">
+            <div class="tesorin-app-icon">T</div>
+            <div>
+              <div class="tesorin-app-title">Tesorin</div>
+              <div class="tesorin-app-subtitle">Wealthflow planner</div>
+            </div>
+          </div>
+          <div class="tesorin-app-subtitle">Logged in</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
     )
 
-    with st.container():
-        left, right = st.columns([3, 2])
+    tab = ss.main_tab
 
-        # ---- LEFT: inputs ----
-        with left:
-            st.subheader("Money coming in and going out")
+    # --- HOME TAB ---
+    if tab == "home":
+        st.subheader("Home · snapshot")
 
-            income = st.number_input(
-                f"Monthly income ({currency})",
-                min_value=0.0,
-                step=1000.0,
-                value=float(profile["income"]),
-            )
-            expenses = st.number_input(
-                f"Monthly expenses ({currency})",
-                min_value=0.0,
-                step=1000.0,
-                value=float(profile["expenses"]),
-            )
-            savings = st.number_input(
-                f"Current savings ({currency})",
-                min_value=0.0,
-                step=1000.0,
-                value=float(profile["savings"]),
-            )
-            debt = st.number_input(
-                f"Current debt ({currency})",
-                min_value=0.0,
-                step=1000.0,
-                value=float(profile["debt"]),
+        income = float(profile["income"])
+        expenses = float(profile["expenses"])
+        savings = float(profile["savings"])
+        debt = float(profile["debt"])
+
+        cashflow = calculate_cashflow(income, expenses)
+        net_worth = calculate_net_worth(savings, debt)
+        savings_rate = calculate_savings_rate(income, cashflow)
+        low_target, high_target = savings_rate_target(country, income)
+        e_target = emergency_fund_target(expenses, debt)
+
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric("Net worth", f"{currency}{net_worth:,.0f}")
+        with col2:
+            st.metric("Monthly free cash", f"{currency}{cashflow:,.0f}")
+
+        if high_target > 0:
+            st.caption(
+                f"Target savings range: **{low_target:.0f}%–{high_target:.0f}%** of income."
             )
 
-            high_interest_debt = st.checkbox(
-                "My main debt is high-interest (credit cards, >12–15%)",
-                value=bool(profile["high_interest_debt"]),
-            )
+        bar_value = max(min(int(savings_rate), 100), 0)
+        st.progress(bar_value if bar_value > 0 else 0)
+        st.caption(f"Current savings rate: **{savings_rate:.1f}%** of income.")
 
-            st.markdown("### Top goals (you can refine later)")
-            goals = st.multiselect(
-                "What are your top goals right now?",
-                [
-                    "Emergency fund",
-                    "House",
-                    "Car",
-                    "Travel",
-                    "Education",
-                    "Wedding",
-                    "Retirement",
-                ],
-                default=profile.get("goals", []),
-            )
+        st.markdown("---")
+        st.write(
+            f"Suggested simple emergency buffer based on your expenses: "
+            f"**{currency}{e_target:,.0f}**."
+        )
+        st.caption(
+            "As you add more detail in Wealthflow and Next step, this home view will stay as your calm snapshot."
+        )
 
-            if st.button("Save this as my current snapshot", use_container_width=True):
-                ss.profile.update(
-                    {
-                        "income": income,
-                        "expenses": expenses,
-                        "savings": savings,
-                        "debt": debt,
-                        "high_interest_debt": high_interest_debt,
-                        "goals": goals,
-                    }
-                )
+    # --- WEALTHFLOW TAB ---
+    elif tab == "wealthflow":
+        st.subheader("Wealthflow · income & expenses")
 
-                # (Optional) later send to Supabase
-                if is_configured():
-                    save_profile(ss.profile)
+        income = st.number_input(
+            f"Monthly income ({currency})",
+            min_value=0.0,
+            step=1000.0,
+            value=float(profile["income"]),
+        )
+        expenses = st.number_input(
+            f"Monthly expenses ({currency})",
+            min_value=0.0,
+            step=1000.0,
+            value=float(profile["expenses"]),
+        )
 
-                st.success("Snapshot saved. The numbers on the right are now updated.")
+        st.caption(
+            "Later this tab will let you add detailed categories and daily entries. "
+            "For now, it's just the core monthly numbers."
+        )
 
-        # ---- RIGHT: three 'cards' ----
-        with right:
-            # Core calculations (used by all three sections)
-            cashflow = calculate_cashflow(income, expenses)
-            net_worth = calculate_net_worth(savings, debt)
-            savings_rate = calculate_savings_rate(income, cashflow)
-            low_target, high_target = savings_rate_target(country, income)
+        if st.button("Save basics", use_container_width=True):
+            ss.profile["income"] = income
+            ss.profile["expenses"] = expenses
+            st.success("Saved. The Home tab now uses these numbers.")
 
-            e_target = emergency_fund_target(expenses, debt)
-            e_gap = max(e_target - savings, 0)
-            monthly_fill = e_gap / 12 if e_gap > 0 else 0
+    # --- NEXT STEP TAB ---
+    elif tab == "next":
+        st.subheader("Next step")
 
-            plan = allocate_monthly_plan(
-                income=income,
-                expenses=expenses,
-                country=country,
-                debt=debt,
-                high_interest_debt=high_interest_debt,
-            )
-            rec = plan["recommended_saving"]
+        st.write(
+            "This tab will guide you through your next actions: "
+            "emergency fund, debt clean-up, and one key goal."
+        )
+        st.write(
+            "For now it's a placeholder, but the idea is that Home shows the snapshot, "
+            "Wealthflow holds your day-to-day money details, and Next step tells you what to do next."
+        )
 
-            # --- Card 1: Financial health snapshot ---
-            with st.container():
-                st.markdown("#### Financial health snapshot")
-
-                c1, c2 = st.columns(2)
-                with c1:
-                    st.metric("Net worth", f"{currency}{net_worth:,.0f}")
-                with c2:
-                    st.metric("Monthly free cash", f"{currency}{cashflow:,.0f}")
-
-                if high_target > 0:
-                    st.caption(
-                        f"Target savings range: **{low_target:.0f}%–{high_target:.0f}%** of income."
-                    )
-
-                bar_value = max(min(int(savings_rate), 100), 0)
-                st.progress(bar_value if bar_value > 0 else 0)
-                st.caption(f"Current savings rate: **{savings_rate:.1f}%** of income.")
-
-            st.markdown("")  # spacing
-
-            # --- Card 2: Monthly cashflow +/- ---
-            with st.container():
-                st.markdown("#### Monthly cashflow +/-")
-
-                if cashflow > 0:
-                    st.success(
-                        f"After your current expenses, you have about **{currency}{cashflow:,.0f}** "
-                        f"left each month to put toward safety and goals."
-                    )
-                elif cashflow < 0:
-                    st.error(
-                        f"Right now you’re short about **{currency}{abs(cashflow):,.0f}** each month. "
-                        "Even small changes on income or spending will make this planner more powerful."
-                    )
-                else:
-                    st.info(
-                        "You’re roughly breaking even each month. "
-                        "A small surplus will help you fund an emergency cushion and goals."
-                    )
-
-                if e_gap > 0:
-                    st.caption(
-                        f"Suggested safety buffer: **{currency}{e_target:,.0f}**. "
-                        f"At roughly **{currency}{monthly_fill:,.0f} per month** you’d build this in about a year."
-                    )
-                else:
-                    st.caption(
-                        "Your current savings already cover this simple emergency buffer rule."
-                    )
-
-            st.markdown("")  # spacing
-
-            # --- Card 3: Long & short term you ---
-            with st.container():
-                st.markdown("#### Long & short term you")
-
-                if goals:
-                    goals_list = ", ".join(goals)
-                    st.write(f"Top goals you’ve picked: **{goals_list}**.")
-                else:
-                    st.write("You haven’t picked any specific goals yet.")
-
-                if rec > 0:
-                    st.caption(
-                        f"Based on your numbers, a reasonable target for monthly saving is "
-                        f"around **{currency}{rec:,.0f}** split across safety, investing, and debt."
-                    )
-                    st.bar_chart(
-                        {
-                            "Emergency": [plan["emergency"]],
-                            "Investing": [plan["investing"]],
-                            "Debt": [plan["debt"]],
-                        }
-                    )
-                else:
-                    st.info(
-                        "Once your monthly cashflow is positive, this section will show "
-                        "how to split that surplus between safety, investing, and debt."
-                    )
-
+    # --- Bottom nav (like an app's bottom bar) ---
+    st.markdown("")
     st.markdown("---")
-    col_left, col_right = st.columns([1, 1])
+    nav1, nav2, nav3 = st.columns(3)
+
+    with nav1:
+        if st.button("💸 Wealthflow", use_container_width=True):
+            ss.main_tab = "wealthflow"
+    with nav2:
+        if st.button("🏠 Home", use_container_width=True):
+            ss.main_tab = "home"
+    with nav3:
+        if st.button("➡ Next step", use_container_width=True):
+            ss.main_tab = "next"
+
+    # --- Footer actions ---
+    col_left, col_right = st.columns(2)
     with col_left:
         if st.button("Back to country & profile", type="secondary"):
-            st.session_state.screen = "country_profile"
-
+            ss.screen = "country_profile"
     with col_right:
         if st.button("Log out", type="secondary"):
             sign_out()
-            st.session_state.user = None
-            st.session_state.screen = "landing"
-
-    st.caption(
-        "Later, these sections can become their own tabs – Dashboard, Goals, Plan – "
-        "but for now everything lives in this Wealthflow view."
-    )
+            ss.user = None
+            ss.screen = "landing"
 
 
 # ---------- MAIN ROUTER ----------
 
 
-def main():
+def main() -> None:
     init_state()
     sync_screen_from_query_params()
     screen = st.session_state.screen
@@ -506,8 +493,8 @@ def main():
         page_login()
     elif screen == "country_profile":
         page_country_profile()
-    elif screen == "wealthflow":
-        page_wealthflow()
+    elif screen == "main":
+        page_main()
     else:
         # Fallback – shouldn't happen
         st.session_state.screen = "landing"
@@ -516,4 +503,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
