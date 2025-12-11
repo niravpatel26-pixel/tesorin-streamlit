@@ -114,15 +114,7 @@ CUSTOM_CSS = """
         color: #6b7280;
     }
 
-    /* Simple bottom nav labels (if we want text under icons later) */
-    .tesorin-nav-label {
-        font-size: 0.8rem;
-        color: #4b5563;
-        text-align: center;
-        margin-top: 0.15rem;
-    }
-
-    /* Generic card style (can be used later on Home) */
+    /* Generic light card style (if needed later) */
     .tesorin-card {
         border-radius: 18px;
         padding: 1.1rem 1.2rem;
@@ -137,6 +129,106 @@ CUSTOM_CSS = """
         margin-bottom: 0.5rem;
         font-size: 0.95rem;
         font-weight: 600;
+    }
+
+    /* ---------- DARK HOME CARD (like your screenshot) ---------- */
+
+    .tesorin-home-card {
+        border-radius: 24px;
+        padding: 1.3rem 1.4rem;
+        background: radial-gradient(circle at 0% 0%, #0b1220 0, #020617 50%, #020617 100%);
+        color: #e5e7eb;
+        box-shadow: 0 28px 60px -35px rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(148, 163, 184, 0.35);
+    }
+
+    .tesorin-home-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #e5e7eb;
+        margin-bottom: 0.35rem;
+    }
+
+    .tesorin-home-amount {
+        font-size: 2rem;
+        font-weight: 600;
+        color: #f9fafb;
+    }
+
+    .tesorin-home-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 0.1rem 0.65rem;
+        border-radius: 999px;
+        background-color: #16a34a;
+        color: #022c22;
+        font-size: 0.75rem;
+        font-weight: 600;
+        margin-left: 0.6rem;
+    }
+
+    .tesorin-home-subcopy {
+        font-size: 0.8rem;
+        color: #cbd5f5;
+        margin-top: 0.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .tesorin-home-em-card {
+        margin-top: 0.4rem;
+        padding: 0.75rem 0.85rem;
+        border-radius: 14px;
+        background-color: rgba(15, 23, 42, 0.95);
+        border: 1px solid rgba(148, 163, 184, 0.5);
+    }
+
+    .tesorin-home-em-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        font-size: 0.8rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .tesorin-home-em-label {
+        color: #e5e7eb;
+        font-weight: 500;
+    }
+
+    .tesorin-home-em-percent {
+        color: #cbd5f5;
+        font-size: 0.8rem;
+    }
+
+    .tesorin-home-em-track {
+        width: 100%;
+        height: 6px;
+        border-radius: 999px;
+        background-color: #020617;
+        overflow: hidden;
+        margin-bottom: 0.4rem;
+    }
+
+    .tesorin-home-em-fill {
+        height: 100%;
+        border-radius: 999px;
+        background: linear-gradient(to right, #38bdf8, #22c55e);
+    }
+
+    .tesorin-home-em-copy {
+        font-size: 0.78rem;
+        color: #9ca3af;
+    }
+
+    .tesorin-home-bullets {
+        margin-top: 0.9rem;
+        font-size: 0.78rem;
+        color: #e5e7eb;
+        padding-left: 1.1rem;
+    }
+
+    .tesorin-home-bullets li {
+        margin-bottom: 0.3rem;
     }
 </style>
 """
@@ -373,8 +465,6 @@ def page_main() -> None:
 
     # --- HOME TAB ---
     if tab == "home":
-        st.subheader("Home · snapshot")
-
         income = float(profile["income"])
         expenses = float(profile["expenses"])
         savings = float(profile["savings"])
@@ -386,29 +476,51 @@ def page_main() -> None:
         low_target, high_target = savings_rate_target(country, income)
         e_target = emergency_fund_target(expenses, debt)
 
-        col1, col2 = st.columns(2)
-        with col1:
-            st.metric("Net worth", f"{currency}{net_worth:,.0f}")
-        with col2:
-            st.metric("Monthly free cash", f"{currency}{cashflow:,.0f}")
+        # Emergency fund progress
+        if e_target > 0:
+            funded_ratio = max(0.0, min(1.0, savings / e_target))
+        else:
+            funded_ratio = 0.0
+        funded_percent = funded_ratio * 100
 
-        if high_target > 0:
-            st.caption(
-                f"Target savings range: **{low_target:.0f}%–{high_target:.0f}%** of income."
-            )
+        # Clamp displayed cashflow at 0 if negative (so the card doesn't look weird)
+        cashflow_display = cashflow if cashflow > 0 else 0.0
 
-        bar_value = max(min(int(savings_rate), 100), 0)
-        st.progress(bar_value if bar_value > 0 else 0)
-        st.caption(f"Current savings rate: **{savings_rate:.1f}%** of income.")
+        home_html = f"""
+        <div class="tesorin-home-card">
+          <div class="tesorin-home-title">Monthly cash flow after expenses</div>
+          <div>
+            <span class="tesorin-home-amount">{currency}{cashflow_display:,.0f}</span>
+            <span class="tesorin-home-pill">to work with</span>
+          </div>
+          <div class="tesorin-home-subcopy">
+            Tesorin suggests how much to save, invest, and keep aside so you’re not guessing every month.
+          </div>
 
-        st.markdown("---")
-        st.write(
-            f"Suggested simple emergency buffer based on your expenses: "
-            f"**{currency}{e_target:,.0f}**."
-        )
-        st.caption(
-            "As you add more detail in Wealthflow and Next step, this home view will stay as your calm snapshot."
-        )
+          <div class="tesorin-home-em-card">
+            <div class="tesorin-home-em-header">
+              <span class="tesorin-home-em-label">Emergency fund</span>
+              <span class="tesorin-home-em-percent">{funded_percent:.0f}% funded</span>
+            </div>
+            <div class="tesorin-home-em-track">
+              <div class="tesorin-home-em-fill" style="width: {funded_percent:.0f}%;"></div>
+            </div>
+            <div class="tesorin-home-em-copy">
+              Track key goals — safety buffer, debt payoff, and long-term investing — in one calm view.
+            </div>
+          </div>
+
+          <ul class="tesorin-home-bullets">
+            <li>Clear priorities: safety first, then debt, then long-term wealth.</li>
+            <li>Built for people taking money seriously for the first time.</li>
+            <li>Designed for beginners — no trading screen, no product push, just planning.</li>
+          </ul>
+        </div>
+        """
+
+        st.markdown(home_html, unsafe_allow_html=True)
+
+
 
     # --- WEALTHFLOW TAB ---
     elif tab == "wealthflow":
