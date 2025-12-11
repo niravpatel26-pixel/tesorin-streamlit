@@ -1,10 +1,10 @@
 # supabase_client.py
 #
-# This is a placeholder for later.
+# This is still a placeholder for later.
 # When you're ready, you'll:
 # 1. `pip install supabase-py`
 # 2. Set SUPABASE_URL and SUPABASE_KEY as environment variables
-# 3. Use this client inside the app to store/load user data.
+# 3. Replace the fake auth functions with real Supabase calls.
 
 import os
 
@@ -16,19 +16,49 @@ def is_configured() -> bool:
     return bool(SUPABASE_URL and SUPABASE_KEY)
 
 
-# Example placeholder functions
+# ---------- PROFILE STORAGE PLACEHOLDER ----------
+
 def save_profile(profile: dict) -> None:
     """
     Later: send data to Supabase.
-    For now: just a placeholder so you can call it from the app without crashing.
+    For now this does nothing – the app just keeps data in session_state.
     """
-    # TODO: implement real Supabase integration
     return
 
 
 def load_profile(user_id: str) -> dict | None:
     """
-    Later: read profile from Supabase by user_id.
+    Later: read profile from Supabase by user_id (or email).
     """
-    # TODO: implement real Supabase integration
     return None
+
+
+# ---------- AUTH PLACEHOLDER ----------
+
+def sign_up(email: str, password: str, name: str | None = None):
+    """
+    Placeholder sign-up.
+    Returns (ok, message or user).
+    Replace with real Supabase sign-up later.
+    """
+    # In this demo we always succeed.
+    user = {"email": email, "name": name}
+    return True, None
+
+
+def sign_in(email: str, password: str):
+    """
+    Placeholder sign-in.
+    Returns (ok, user or message).
+    """
+    # In this demo we always succeed and return a fake user.
+    user = {"email": email, "name": email.split("@")[0]}
+    return True, user
+
+
+def sign_out():
+    """
+    Placeholder sign-out.
+    Real version would revoke tokens / clear session.
+    """
+    return True
