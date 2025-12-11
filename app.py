@@ -689,7 +689,7 @@ def page_main() -> None:
         """
         st.markdown(home_html, unsafe_allow_html=True)
 
-    # --- WEALTHFLOW TAB ---
+        # --- WEALTHFLOW TAB ---
     elif tab == "wealthflow":
         st.subheader("Wealthflow · wallets & transactions")
 
@@ -718,52 +718,60 @@ def page_main() -> None:
                 f"{start_date.strftime('%b %d, %Y')} — {end_date.strftime('%b %d, %Y')}"
             )
 
-            wealth_html = f"""
-            <div class="tesorin-home-card">
-              <div class="tesorin-home-title">Wallet snapshot</div>
-              <div class="tesorin-home-subcopy">
-                {wallet['name']} · {period_label}
-              </div>
+            wealth_html = (
+                '<div class="tesorin-home-card">'
+                '<div class="tesorin-home-title">Wallet snapshot</div>'
+                f'<div class="tesorin-home-subcopy">{wallet["name"]} · {period_label}</div>'
 
-              <div style="margin-top:0.75rem; display:flex; align-items:flex-end; gap:1.75rem; flex-wrap:wrap;">
-                <div>
-                  <div class="tesorin-home-amount" style="color:{balance_color};">
-                    {currency}{stats['balance']:,.0f}
-                  </div>
-                  <span class="tesorin-home-pill">current balance</span>
-                </div>
+                '<div style="margin-top:0.75rem; display:flex; align-items:flex-end; '
+                'gap:1.75rem; flex-wrap:wrap;">'
 
-                <div style="font-size:0.8rem; color:#e5e7eb; display:flex; gap:1.75rem; flex-wrap:wrap;">
-                  <div>
-                    <div style="opacity:0.7;">Period change</div>
-                    <div style="font-weight:600; color:{change_color};">
-                      {currency}{stats['change']:,.0f}
-                    </div>
-                  </div>
-                  <div>
-                    <div style="opacity:0.7;">Total income</div>
-                    <div style="font-weight:600; color:#16a34a;">
-                      {currency}{stats['income']:,.0f}
-                    </div>
-                  </div>
-                  <div>
-                    <div style="opacity:0.7;">Total expenses</div>
-                    <div style="font-weight:600; color:#f87171;">
-                      {currency}{stats['expenses']:,.0f}
-                    </div>
-                  </div>
-                </div>
-              </div>
+                # LEFT: balance
+                '<div>'
+                f'<div class="tesorin-home-amount" style="color:{balance_color};">'
+                f'{currency}{stats["balance"]:,.0f}'
+                '</div>'
+                '<span class="tesorin-home-pill">current balance</span>'
+                '</div>'
 
-              <ul class="tesorin-home-bullets">
-                <li>One simple wallet for now — later you’ll be able to add more accounts.</li>
-                <li>Use the transaction view below to log real income and spending.</li>
-              </ul>
-            </div>
-            """
+                # RIGHT: three small stats in a row
+                '<div style="font-size:0.8rem; color:#e5e7eb; display:flex; '
+                'gap:1.75rem; flex-wrap:wrap;">'
+
+                '<div>'
+                '<div style="opacity:0.7;">Period change</div>'
+                f'<div style="font-weight:600; color:{change_color};">'
+                f'{currency}{stats["change"]:,.0f}'
+                '</div>'
+                '</div>'
+
+                '<div>'
+                '<div style="opacity:0.7;">Total income</div>'
+                '<div style="font-weight:600; color:#16a34a;">'
+                f'{currency}{stats["income"]:,.0f}'
+                '</div>'
+                '</div>'
+
+                '<div>'
+                '<div style="opacity:0.7;">Total expenses</div>'
+                '<div style="font-weight:600; color:#f87171;">'
+                f'{currency}{stats["expenses"]:,.0f}'
+                '</div>'
+                '</div>'
+
+                '</div>'   # end small-stats flex
+                '</div>'   # end top flex wrapper
+
+                '<ul class="tesorin-home-bullets">'
+                '<li>One simple wallet for now — later you’ll be able to add more accounts.</li>'
+                '<li>Use the transaction view below to log real income and spending.</li>'
+                '</ul>'
+                '</div>'
+            )
+
             st.markdown(wealth_html, unsafe_allow_html=True)
 
-            # Button row under the card
+            # Button under the card
             st.markdown("")
             col_wallet_btn, _ = st.columns([1, 2])
             with col_wallet_btn:
@@ -818,6 +826,7 @@ def page_main() -> None:
                 st.table(rows)
             else:
                 st.caption("No transactions in this period yet.")
+
     
     # --- NEXT STEP TAB ---
     elif tab == "next":
