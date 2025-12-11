@@ -146,7 +146,7 @@ def sync_screen_from_query_params():
 
 
 def page_landing():
-    """First screen: hero CTA + Sign up / Log in buttons."""
+    """First screen: simple hero + Sign up / Log in buttons."""
     spacer_left, main, spacer_right = st.columns([0.5, 2, 0.5])
 
     with main:
@@ -169,32 +169,7 @@ def page_landing():
             unsafe_allow_html=True,
         )
 
-        # Hero CTA pill (keep as you already have)
-        st.markdown(
-            """
-            <div class="tesorin-hero-card">
-              <div class="tesorin-cta-wrap">
-                <div>
-                  <p class="tesorin-hero-title">
-                    Start your first serious wealth plan with Tesorin.
-                  </p>
-                  <p class="tesorin-hero-subtitle">
-                    Join the early access list and help shape a calmer way to do money.
-                  </p>
-                </div>
-                <div>
-                  <a href="?screen=signup" class="tesorin-cta-button">
-                    Join early access &rarr;
-                  </a>
-                </div>
-              </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        st.markdown("")
-        st.caption("Already on the list? Log in below.")
+        st.caption("Get started by creating an account or logging in.")
 
         col1, col2 = st.columns(2)
         with col1:
