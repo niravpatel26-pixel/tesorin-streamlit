@@ -64,91 +64,101 @@ def init_state():
 
 def page_landing():
     """First screen: simple hero + Sign up / Log in buttons."""
-    st.markdown("### Tesorin — your first calm Wealth plan")
-    st.markdown(
-        "**Build your first serious money plan** with a calm, simple view of your "
-        "cashflow, safety buffer and goals."
-    )
 
-    st.write(
-        "Tesorin is for people who are taking money seriously for the first time – "
-        "without trading screens or hype."
-    )
+    # Center the main content in the middle column
+    spacer_left, main, spacer_right = st.columns([1, 2, 1])
+    with main:
+        st.markdown("### Tesorin — your first calm money plan")
+        st.write(
+            "Start with a simple view of your income, expenses, and goals. "
+            "No trading screens, no hype – just a calm money plan you can actually follow."
+        )
 
-    st.markdown("---")
+        st.markdown("---")
 
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Sign up", use_container_width=True):
-            st.session_state.screen = "signup"
+        st.markdown("#### Get started")
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Sign up", use_container_width=True):
+                st.session_state.screen = "signup"
 
-    with col2:
-        if st.button("Log in", use_container_width=True):
-            st.session_state.screen = "login"
+        with col2:
+            if st.button("Log in", use_container_width=True):
+                st.session_state.screen = "login"
 
-    st.caption(
-        "Later, this screen can show moving images / tiny stories about Tesorin "
-        "like in your Figma sketch."
-    )
+        st.caption(
+            "Later, this screen can show small stories or illustrations like in your mobile mockup."
+        )
 
 
 def page_signup():
     """Sign-up form: name (optional), email, password, terms."""
-    st.markdown("### Create your Tesorin account")
 
-    with st.form("signup_form", clear_on_submit=False):
-        name = st.text_input("Preferred name (optional)")
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
-        agree = st.checkbox("I agree to the terms and conditions")
+    spacer_left, main, spacer_right = st.columns([1, 2, 1])
+    with main:
+        st.markdown("### Create your Tesorin account")
 
-        submitted = st.form_submit_button("Sign up")
+        with st.form("signup_form", clear_on_submit=False):
+            name = st.text_input("Preferred name (optional)")
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            agree = st.checkbox("I agree to the terms and conditions")
 
-    if submitted:
-        if not email or not password:
-            st.error("Email and password are required.")
-            return
+            submitted = st.form_submit_button("Sign up")
 
-        if not agree:
-            st.error("Please agree to the terms to continue.")
-            return
+        if submitted:
+            if not email or not password:
+                st.error("Email and password are required.")
+                return
 
-        ok, err = sign_up(email, password, name=name or None)
-        if not ok:
-            st.error(err or "Could not sign up right now.")
-            return
+            if not agree:
+                st.error("Please agree to the terms to continue.")
+                return
 
-        # Fake user object, real app would use returned Supabase user
-        st.session_state.user = {"email": email, "name": name or email.split("@")[0]}
-        st.session_state.screen = "country_profile"
-        st.success("Account created. Let’s set your country and basic profile.")
+            ok, err = sign_up(email, password, name=name or None)
+            if not ok:
+                st.error(err or "Could not sign up right now.")
+                return
+
+            # Fake user object, real app would use returned Supabase user
+            st.session_state.user = {"email": email, "name": name or email.split("@")[0]}
+            st.session_state.screen = "country_profile"
+            st.success("Account created. Let’s set your country and basic profile.")
+
+        st.markdown("")
+        if st.button("Back to start", type="secondary"):
+            st.session_state.screen = "landing"
 
 
 def page_login():
     """Log-in form: email, password."""
-    st.markdown("### Welcome back")
 
-    with st.form("login_form", clear_on_submit=False):
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Log in")
+    spacer_left, main, spacer_right = st.columns([1, 2, 1])
+    with main:
+        st.markdown("### Welcome back")
 
-    if submitted:
-        if not email or not password:
-            st.error("Email and password are required.")
-            return
+        with st.form("login_form", clear_on_submit=False):
+            email = st.text_input("Email")
+            password = st.text_input("Password", type="password")
+            submitted = st.form_submit_button("Log in")
 
-        ok, user_or_error = sign_in(email, password)
-        if not ok:
-            st.error(user_or_error or "Login failed.")
-            return
+        if submitted:
+            if not email or not password:
+                st.error("Email and password are required.")
+                return
 
-        st.session_state.user = user_or_error
-        st.session_state.screen = "country_profile"
-        st.success("Logged in. Let’s confirm your country & profile.")
+            ok, user_or_error = sign_in(email, password)
+            if not ok:
+                st.error(user_or_error or "Login failed.")
+                return
 
-    if st.button("Back to start", type="secondary"):
-        st.session_state.screen = "landing"
+            st.session_state.user = user_or_error
+            st.session_state.screen = "country_profile"
+            st.success("Logged in. Let’s confirm your country & profile.")
+
+        st.markdown("")
+        if st.button("Back to start", type="secondary"):
+            st.session_state.screen = "landing"
 
 
 def page_country_profile():
