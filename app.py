@@ -615,7 +615,7 @@ def page_main() -> None:
         em_percent = em_ratio * 100
         cashflow_display = cashflow if cashflow > 0 else 0.0
 
-        goals_html = ""
+               goals_html = ""
         if ss.goal_plans:
             rows = ""
             for goal in ss.goal_plans[:3]:
@@ -629,26 +629,27 @@ def page_main() -> None:
                     amounts_text = f"{currency}{saved:,.0f} saved"
 
                 rows += f"""
-                <div class="tesorin-goal-row">
-                  <div class="tesorin-goal-row-top">
-                    <span class="tesorin-goal-name">{goal['name']}</span>
-                    <span class="tesorin-goal-percent">{pct}%</span>
-                  </div>
-                  <div class="tesorin-goal-track">
-                    <div class="tesorin-goal-fill" style="width:{pct}%;"></div>
-                  </div>
-                  <div class="tesorin-goal-amounts">{amounts_text}</div>
-                </div>
-                """
+<div class="tesorin-goal-row">
+  <div class="tesorin-goal-row-top">
+    <span class="tesorin-goal-name">{goal['name']}</span>
+    <span class="tesorin-goal-percent">{pct}%</span>
+  </div>
+  <div class="tesorin-goal-track">
+    <div class="tesorin-goal-fill" style="width:{pct}%;"></div>
+  </div>
+  <div class="tesorin-goal-amounts">{amounts_text}</div>
+</div>
+"""
 
             goals_html = f"""
-            <div class="tesorin-home-goals-section">
-              <div class="tesorin-home-title" style="margin-bottom:0.25rem;">
-                Goals snapshot
-              </div>
-              {rows}
-            </div>
-            """
+<div class="tesorin-home-goals-section">
+  <div class="tesorin-home-title" style="margin-bottom:0.25rem;">
+    Goals snapshot
+  </div>
+  {rows}
+</div>
+"""
+
 
         home_html = f"""
         <div class="tesorin-home-card">
@@ -1051,10 +1052,58 @@ def page_main() -> None:
                         ss.profile["goals"].append(name)
                     st.success(f"Added new tracked goal: {name}")
 
-        if ss.goal_plans:
+               if ss.goal_plans:
             st.markdown("### Track progress on your goals")
 
+            # Try to find an Emergency fund goal (by name or kind)
+            emergency_goal = next(
+                (
+                    g
+                    for g in ss.goal_plans
+                    if "emergency" in g.get("name", "").lower()
+                    or "emergency" in g.get("kind", "").lower()
+                ),
+                None,
+            )
+
+            # --- Dedicated Emergency fund section ---
+            if emergency_goal:
+                st.markdown("#### Emergency fund")
+
+                target = emergency_goal.get("target", 0.0) or 0.0
+                saved = emergency_goal.get("saved", 0.0) or 0.0
+                if target > 0:
+                    pct = int(min(100, max(0, saved / target * 100)))
+                    caption_text = (
+                        f"{currency}{saved:,.0f} / {currency}{target:,.0f} "
+                        f"({pct}% complete)"
+                    )
+                else:
+                    pct = 0
+                    caption_text = f"{currency}{saved:,.0f} saved so far"
+
+                st.caption(caption_text)
+                st.progress(pct)
+
+                add_em = st.number_input(
+                    f"Add amount to Emergency fund ({currency})",
+                    min_value=0.0,
+                    step=100.0,
+                    key="goal_add_emergency",
+                )
+                if st.button("Add to Emergency fund", key="goal_btn_emergency"):
+                    emergency_goal["saved"] += float(add_em)
+                    st.success("Emergency fund updated.")
+
+                st.markdown("---")
+
+            # --- Other goals ---
+            st.markdown("#### Other goals")
+
             for idx, goal in enumerate(ss.goal_plans):
+                if emergency_goal is not None and goal is emergency_goal:
+                    continue  # skip, already shown above
+
                 target = goal.get("target", 0.0) or 0.0
                 saved = goal.get("saved", 0.0) or 0.0
                 if target > 0:
@@ -1077,6 +1126,7 @@ def page_main() -> None:
                 if st.button("Add", key=f"goal_btn_{idx}"):
                     goal["saved"] += float(add_amount)
                     st.success("Goal updated.")
+
 
     # --- Bottom nav ---
     st.markdown("")
