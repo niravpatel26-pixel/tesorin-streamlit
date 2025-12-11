@@ -31,7 +31,8 @@ CUSTOM_CSS = """
 CUSTOM_CSS = """
 <style>
     /* Import a Caslon-like serif font for the hero heading */
-    @import url('https://fonts.googleapis.com/css2?family=EB+Garamond:wght@400;600&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&display=swap');
+
 
     /* App background + base text */
     .stApp {
@@ -63,12 +64,13 @@ CUSTOM_CSS = """
         margin-bottom: 1.4rem;
     }
 
-    /* Big hero heading in Caslon-style serif */
+        /* Big hero heading in Caslon-like serif */
     .tesorin-hero-heading {
-        font-family: "Adobe Caslon Pro", "EB Garamond", "Times New Roman", serif;
-        font-size: 2.6rem;
+        font-family: "Adobe Caslon Pro", "Cormorant Garamond", "Times New Roman", serif;
+        font-size: 2.7rem;
         line-height: 1.1;
-        font-weight: 400;
+        font-weight: 500;
+        letter-spacing: 0.01em;
         margin: 0.5rem 0 1.75rem;
     }
 
@@ -76,6 +78,7 @@ CUSTOM_CSS = """
         color: #16a34a;   /* calm green accent */
         font-weight: 600;
     }
+
 
     /* The pill-shaped hero card */
     .tesorin-hero-card {
