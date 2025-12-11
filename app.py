@@ -25,26 +25,78 @@ st.set_page_config(
     layout="wide",
 )
 
-# ---------- BASIC TEMA / STYLING (forces background etc.) ----------
+# ---------- BASIC THEME / GLOBAL STYLING ----------
 
 CUSTOM_CSS = """
 <style>
-    /* Whole app background */
+    /* App background + base text */
     .stApp {
-        background-color: #F3F4F6;
+        background-color: #F5F7FB;
+        color: #0f172a;
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
-    /* Main content area */
+    /* Center column width */
     .block-container {
         max-width: 960px;
         margin: 0 auto;
-        padding-top: 2rem;
+        padding-top: 2.5rem;
         padding-bottom: 3rem;
+    }
+
+    /* The pill-shaped hero card */
+    .tesorin-hero-card {
+        border-radius: 999px;
+        padding: 1.1rem 1.75rem;
+        background: radial-gradient(circle at 0% 0%, #ecfdf5 0, #e0f2fe 40%, #ffffff 100%);
+        border: 1px solid rgba(15, 23, 42, 0.06);
+        box-shadow: 0 22px 40px -30px rgba(15, 23, 42, 0.55);
+    }
+
+    .tesorin-cta-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+
+    .tesorin-hero-title {
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #020617;
+        margin-bottom: 0.1rem;
+    }
+
+    .tesorin-hero-subtitle {
+        font-size: 0.85rem;
+        color: #4b5563;
+        margin: 0;
+    }
+
+    .tesorin-cta-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0.55rem 1.6rem;
+        border-radius: 999px;
+        background-color: #020617;
+        color: #f9fafb;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-decoration: none;
+        box-shadow: 0 14px 30px -18px rgba(15, 23, 42, 0.9);
+        white-space: nowrap;
+    }
+
+    .tesorin-cta-button:hover {
+        text-decoration: none;
+        background-color: #020617;
+        opacity: 0.92;
     }
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
-
 
 
 # ---------- SMALL HELPERS ----------
