@@ -325,6 +325,38 @@ def init_state() -> None:
         today = date.today()
         start = today.replace(day=1)
         ss.wealthflow_period = (start, today)
+    # Simple wallets + transactions for Wealthflow
+    if "wallets" not in ss:
+        ss.wallets = [
+            {
+                "id": "main",
+                "name": "Household wallet",
+                "transactions": [],  # list of dicts: date, category, note, amount
+            }
+        ]
+
+    if "wealthflow_view" not in ss:
+        ss.wealthflow_view = "overview"  # 'overview' or 'wallet'
+
+    if "selected_wallet_id" not in ss:
+        ss.selected_wallet_id = "main"
+
+    # Default period for wealthflow: this month to today
+    if "wealthflow_period" not in ss:
+        today = date.today()
+        start = today.replace(day=1)
+        ss.wealthflow_period = (start, today)
+
+    # -------- NEW: store answers for Next step --------
+    if "next_step" not in ss:
+        ss.next_step = {
+            "primary_goal": None,
+            "timeframe": None,
+            "why": "",
+            "risk": 3,
+            "monthly_amount": 0.0,
+        }
+
 
 
 def sync_screen_from_query_params() -> None:
@@ -706,18 +738,202 @@ def page_main() -> None:
             else:
                 st.caption("No transactions in this period yet.")
 
-    # --- NEXT STEP TAB ---
+        # --- NEXT STEP TAB ---
     elif tab == "next":
-        st.subheader("Next step")
+        st.subheader("Next step · shape your first plan")
 
-        st.write(
-            "This tab will guide you through your next actions: "
-            "emergency fund, debt clean-up, and one key goal."
-        )
-        st.write(
-            "For now it's a placeholder, but the idea is that Home shows the snapshot, "
-            "Wealthflow holds your day-to-day money details, and Next step tells you what to do next."
-        )
+        ns = ss.next_step
+
+        income = float(profile["income"])
+        expenses = float(profile["expenses"])
+        savings = float(profile["savings"])
+        debt = float(profile["debt"])
+
+        cashflow = calculate_cashflow(income, expenses)
+
+        if cashflow > 0:
+            st.caption(
+                f"Right now it looks like you have about {currency}{cashflow:,.0f} "
+                "left after expenses each month. Let’s decide what to do with that."
+            )
+        elif cashflow < 0:
+            st.caption(
+                f"Right now you’re short about {currency}{abs(cashflow):,.0f} each month. "
+                "That’s okay – these questions will still help you see a direction."
+            )
+        else:
+            st.caption(
+                "You’re roughly breaking even. These questions will help you see what to focus on first."
+            )
+
+        # --- Question form ---
+        primary_goal_options = [
+            "Build or top up my emergency fund",
+            "Clean up high-interest debt",
+            "Start long-term investing",
+            "Save for a specific purchase",
+            "I’m not sure yet",
+        ]
+
+        def _goal_index():
+            g = ns.get("primary_goal")
+            if g in primary_goal_options:
+                return primary_goal_options.index(g)
+            return 0
+
+        timeframe_options = [
+            "Next 3 months",
+            "Next 6–12 months",
+            "Next 2–3 years",
+            "More than 3 years",
+        ]
+
+        def _time_index():
+            t = ns.get("timeframe")
+            if t in timeframe_options:
+                return timeframe_options.index(t)
+            return 1
+
+        with st.form("next_step_form", clear_on_submit=False):
+            primary_goal = st.selectbox(
+                "What feels like your top priority right now?",
+                primary_goal_options,
+                index=_goal_index(),
+            )
+
+            timeframe = st.selectbox(
+                "When would you like to feel real progress on this?",
+                timeframe_options,
+                index=_time_index(),
+            )
+
+            why = st.text_area(
+                "In one or two sentences, why does this matter to you?",
+                value=ns.get("why", ""),
+                placeholder="Example: I want a 3-month buffer so I can change jobs without panic.",
+            )
+
+            risk = st.slider(
+                "How comfortable are you with your investments moving up and down?",
+                min_value=1,
+                max_value=5,
+                value=int(ns.get("risk", 3)),
+                help="1 = I hate seeing any drops. 5 = I’m okay with swings for long-term growth.",
+            )
+
+            default_monthly = ns.get("monthly_amount", max(cashflow, 0))
+            if default_monthly < 0:
+                default_monthly = 0.0
+
+            monthly_amount = st.number_input(
+                f"If things go right, how much could you put toward this goal each month? ({currency})",
+                min_value=0.0,
+                step=100.0,
+                value=float(default_monthly),
+            )
+
+            submitted = st.form_submit_button("Save answers and see next steps")
+
+        if submitted:
+            ns.update(
+                {
+                    "primary_goal": primary_goal,
+                    "timeframe": timeframe,
+                    "why": why,
+                    "risk": int(risk),
+                    "monthly_amount": float(monthly_amount),
+                }
+            )
+            ss.next_step = ns
+            st.success("Saved. Scroll down for a simple next-step plan.")
+
+        # --- Show the plan if we have answers ---
+        if ns.get("primary_goal"):
+            st.markdown("### Your simple next-step plan")
+
+            goal = ns["primary_goal"]
+            monthly = ns.get("monthly_amount", 0.0)
+            if monthly <= 0 and cashflow > 0:
+                monthly = max(cashflow * 0.3, 0)  # fall-back guess
+
+            # Emergency-fund specific numbers
+            e_target = emergency_fund_target(expenses, debt=debt)
+            gap = max(e_target - savings, 0)
+            months_to_buffer = gap / monthly if monthly > 0 else None
+
+            # Tailored text based on chosen focus
+            if "emergency fund" in goal.lower():
+                st.write(
+                    f"**Focus:** build a simple emergency fund of about "
+                    f"**{currency}{e_target:,.0f}**."
+                )
+                lines = []
+                lines.append(
+                    f"- Aim to send **{currency}{monthly:,.0f} per month** into a separate high-safety account."
+                )
+                if months_to_buffer:
+                    lines.append(
+                        f"- At that pace, you’d reach this buffer in roughly **{months_to_buffer:.1f} months**."
+                    )
+                lines.append(
+                    "- Keep investments very low-risk until this buffer is in place."
+                )
+                lines.append(
+                    "- Revisit this tab once the buffer is at least 50–75% funded."
+                )
+                st.markdown("\n".join(lines))
+
+            elif "debt" in goal.lower():
+                st.write(
+                    "**Focus:** clean up high-interest debt while keeping a small safety cushion."
+                )
+                st.markdown(
+                    f"- Choose a fixed payment of **{currency}{monthly:,.0f} per month** toward your highest-interest debt.\n"
+                    "- Keep a mini-buffer of ~1 month of expenses in cash before making extra payments.\n"
+                    "- Each month, log payments in Wealthflow so you can see your balance trend down.\n"
+                    "- When high-interest debt is gone, redirect this same amount into investing."
+                )
+
+            elif "investing" in goal.lower():
+                st.write("**Focus:** start a calm, automatic investing habit.")
+                st.markdown(
+                    f"- Pick a realistic starting amount, e.g. **{currency}{monthly:,.0f} per month**.\n"
+                    "- Use a simple diversified fund rather than chasing single stocks.\n"
+                    "- Set a rule: you only review this plan once per quarter, not every market headline.\n"
+                    "- Track your overall invested balance in Tesorin, not day-to-day price moves."
+                )
+
+            elif "specific purchase" in goal.lower():
+                st.write("**Focus:** save for a specific purchase without breaking your basics.")
+                st.markdown(
+                    f"- Give the goal a name and target amount (for example {currency}300,000 for a car).\n"
+                    f"- With **{currency}{monthly:,.0f} per month**, estimate how many months it would take and compare to your timeframe.\n"
+                    "- Keep this pot separate from your emergency fund.\n"
+                    "- If the timeline feels too long, either lower the target or raise the monthly amount once cashflow improves."
+                )
+
+            else:  # I’m not sure yet
+                st.write("**Focus:** get the basics solid before picking a specific goal.")
+                st.markdown(
+                    "- First, make sure your monthly cashflow is positive (Wealthflow tab).\n"
+                    "- Build at least 1 month of essential expenses as a starter buffer.\n"
+                    "- Then come back here and pick either emergency fund, debt, or long-term investing as your first focus."
+                )
+
+            st.markdown("#### Next 7 days")
+            st.markdown(
+                "- Write down your current balances: cash, debt, and any investments.\n"
+                "- Decide where your emergency buffer will live (which account).\n"
+                "- If you’re comfortable, set up an automatic monthly transfer for the amount you chose."
+            )
+
+            st.markdown("#### Next 30–90 days")
+            st.markdown(
+                "- Track at least one month of real spending in the Wealthflow tab.\n"
+                "- Adjust your monthly goal amount if it feels too tight or too easy.\n"
+                "- Revisit this tab in a month to see if your focus still feels right."
+            )
+
 
     # --- Bottom nav (like an app's bottom bar) ---
     st.markdown("")
