@@ -25,6 +25,27 @@ st.set_page_config(
     layout="wide",
 )
 
+# ---------- BASIC TEMA / STYLING (forces background etc.) ----------
+
+CUSTOM_CSS = """
+<style>
+    /* Whole app background */
+    .stApp {
+        background-color: #F3F4F6;
+    }
+
+    /* Main content area */
+    .block-container {
+        max-width: 960px;
+        margin: 0 auto;
+        padding-top: 2rem;
+        padding-bottom: 3rem;
+    }
+</style>
+"""
+st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
+
+
 
 # ---------- SMALL HELPERS ----------
 
