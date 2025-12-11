@@ -61,20 +61,21 @@ CUSTOM_CSS = """
         flex-wrap: wrap;
     }
 
-    .tesorin-hero-title {
+        .tesorin-hero-title {
         font-size: 0.95rem;
         font-weight: 600;
-        color: #020617;
+        color: #ffffff;
         margin-bottom: 0.1rem;
     }
 
     .tesorin-hero-subtitle {
         font-size: 0.85rem;
-        color: #4b5563;
+        color: #e5e7eb;
         margin: 0;
     }
 
-        .tesorin-cta-button,
+
+    .tesorin-cta-button,
     .tesorin-cta-button:visited {
         display: inline-flex;
         align-items: center;
@@ -95,6 +96,8 @@ CUSTOM_CSS = """
         text-decoration: none !important;
         background-color: #020617;
         opacity: 0.92;
+    }
+
     }
 
 </style>
@@ -489,8 +492,13 @@ def main():
         page_country_profile()
     elif screen == "wealthflow":
         page_wealthflow()
-    else:
+        else:
         # Fallback – shouldn't happen
         st.session_state.screen = "landing"
         page_landing()
+
+
+if __name__ == "__main__":
+    main()
+
 
