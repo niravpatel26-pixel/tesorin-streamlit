@@ -287,16 +287,17 @@ def page_country_profile():
 
 
 def page_wealthflow():
-    """Main planner screen – your existing cashflow + goals + snapshot."""
+    """Main planner screen – inputs on the left, 3 cards on the right."""
 
     ss = st.session_state
     profile = ss.profile
     country = profile["country"]
     currency = get_currency(country)
 
-    st.markdown("### Tesorin · First Step")
+    st.markdown("### Tesorin · Wealthflow")
     st.caption(
-        "This is your v0.1 planner – focused on basic inputs, emergency fund and simple monthly allocations."
+        "This v0.1 planner focuses on your cashflow, a simple emergency buffer, "
+        "and a first pass at how to split your monthly surplus."
     )
 
     with st.container():
@@ -304,7 +305,7 @@ def page_wealthflow():
 
         # ---- LEFT: inputs ----
         with left:
-            st.subheader("2. Wealth flow · income, expenses & goals")
+            st.subheader("Money coming in and going out")
 
             income = st.number_input(
                 f"Monthly income ({currency})",
@@ -336,7 +337,7 @@ def page_wealthflow():
                 value=bool(profile["high_interest_debt"]),
             )
 
-            st.markdown("### 3. Top goals (you can refine later)")
+            st.markdown("### Top goals (you can refine later)")
             goals = st.multiselect(
                 "What are your top goals right now?",
                 [
@@ -351,7 +352,7 @@ def page_wealthflow():
                 default=profile.get("goals", []),
             )
 
-            if st.button("Save this as my current snapshot"):
+            if st.button("Save this as my current snapshot", use_container_width=True):
                 ss.profile.update(
                     {
                         "income": income,
@@ -369,51 +370,18 @@ def page_wealthflow():
 
                 st.success("Snapshot saved. The numbers on the right are now updated.")
 
-        # ---- RIGHT: snapshot ----
+        # ---- RIGHT: three 'cards' ----
         with right:
-            st.subheader("Quick snapshot")
-
-            # Use most recent values from the UI (not old profile values)
+            # Core calculations (used by all three sections)
             cashflow = calculate_cashflow(income, expenses)
             net_worth = calculate_net_worth(savings, debt)
             savings_rate = calculate_savings_rate(income, cashflow)
-
-            c1, c2 = st.columns(2)
-            with c1:
-                st.metric("Net worth", f"{currency}{net_worth:,.0f}")
-            with c2:
-                st.metric("Monthly free cash", f"{currency}{cashflow:,.0f}")
-
             low_target, high_target = savings_rate_target(country, income)
-            if high_target > 0:
-                st.caption(
-                    f"Target savings range for you: **{low_target:.0f}%–{high_target:.0f}%** of income."
-                )
-
-            bar_value = max(min(int(savings_rate), 100), 0)
-            st.progress(bar_value if bar_value > 0 else 0)
-            st.caption(f"Current savings rate: **{savings_rate:.1f}%** of income.")
-
-            st.markdown("---")
-            st.markdown("### Emergency fund (v0.1 rule)")
 
             e_target = emergency_fund_target(expenses, debt)
             e_gap = max(e_target - savings, 0)
             monthly_fill = e_gap / 12 if e_gap > 0 else 0
 
-            st.write(
-                f"Suggested safety buffer: **{currency}{e_target:,.0f}** "
-                f"(based on your monthly expenses)."
-            )
-            if e_gap > 0:
-                st.write(
-                    f"If you put around **{currency}{monthly_fill:,.0f} per month** aside for a year, "
-                    "you’d fully fund this buffer."
-                )
-            else:
-                st.success("Your current savings already cover this simple buffer rule.")
-
-            st.markdown("### Example monthly allocation")
             plan = allocate_monthly_plan(
                 income=income,
                 expenses=expenses,
@@ -422,21 +390,87 @@ def page_wealthflow():
                 high_interest_debt=high_interest_debt,
             )
             rec = plan["recommended_saving"]
-            if rec > 0:
-                st.caption(
-                    f"Recommended monthly saving (target vs. cashflow): **{currency}{rec:,.0f}**"
-                )
-                st.bar_chart(
-                    {
-                        "Emergency": [plan["emergency"]],
-                        "Investing": [plan["investing"]],
-                        "Debt": [plan["debt"]],
-                    }
-                )
-            else:
-                st.info(
-                    "Cashflow is not positive yet. Small fixes on income/spending will make the plan more useful."
-                )
+
+            # --- Card 1: Financial health snapshot ---
+            with st.container():
+                st.markdown("#### Financial health snapshot")
+
+                c1, c2 = st.columns(2)
+                with c1:
+                    st.metric("Net worth", f"{currency}{net_worth:,.0f}")
+                with c2:
+                    st.metric("Monthly free cash", f"{currency}{cashflow:,.0f}")
+
+                if high_target > 0:
+                    st.caption(
+                        f"Target savings range: **{low_target:.0f}%–{high_target:.0f}%** of income."
+                    )
+
+                bar_value = max(min(int(savings_rate), 100), 0)
+                st.progress(bar_value if bar_value > 0 else 0)
+                st.caption(f"Current savings rate: **{savings_rate:.1f}%** of income.")
+
+            st.markdown("")  # spacing
+
+            # --- Card 2: Monthly cashflow +/- ---
+            with st.container():
+                st.markdown("#### Monthly cashflow +/-")
+
+                if cashflow > 0:
+                    st.success(
+                        f"After your current expenses, you have about **{currency}{cashflow:,.0f}** "
+                        f"left each month to put toward safety and goals."
+                    )
+                elif cashflow < 0:
+                    st.error(
+                        f"Right now you’re short about **{currency}{abs(cashflow):,.0f}** each month. "
+                        "Even small changes on income or spending will make this planner more powerful."
+                    )
+                else:
+                    st.info(
+                        "You’re roughly breaking even each month. "
+                        "A small surplus will help you fund an emergency cushion and goals."
+                    )
+
+                if e_gap > 0:
+                    st.caption(
+                        f"Suggested safety buffer: **{currency}{e_target:,.0f}**. "
+                        f"At roughly **{currency}{monthly_fill:,.0f} per month** you’d build this in about a year."
+                    )
+                else:
+                    st.caption(
+                        "Your current savings already cover this simple emergency buffer rule."
+                    )
+
+            st.markdown("")  # spacing
+
+            # --- Card 3: Long & short term you ---
+            with st.container():
+                st.markdown("#### Long & short term you")
+
+                if goals:
+                    goals_list = ", ".join(goals)
+                    st.write(f"Top goals you’ve picked: **{goals_list}**.")
+                else:
+                    st.write("You haven’t picked any specific goals yet.")
+
+                if rec > 0:
+                    st.caption(
+                        f"Based on your numbers, a reasonable target for monthly saving is "
+                        f"around **{currency}{rec:,.0f}** split across safety, investing, and debt."
+                    )
+                    st.bar_chart(
+                        {
+                            "Emergency": [plan["emergency"]],
+                            "Investing": [plan["investing"]],
+                            "Debt": [plan["debt"]],
+                        }
+                    )
+                else:
+                    st.info(
+                        "Once your monthly cashflow is positive, this section will show "
+                        "how to split that surplus between safety, investing, and debt."
+                    )
 
     st.markdown("---")
     col_left, col_right = st.columns([1, 1])
@@ -451,8 +485,8 @@ def page_wealthflow():
             st.session_state.screen = "landing"
 
     st.caption(
-        "Later, you’ll have separate pages for Dashboard, Goals, Plan, Learn, and Settings – "
-        "all powered by this snapshot."
+        "Later, these sections can become their own tabs – Dashboard, Goals, Plan – "
+        "but for now everything lives in this Wealthflow view."
     )
 
 
