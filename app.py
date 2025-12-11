@@ -1,4 +1,5 @@
 import streamlit as st
+from datetime import date
 
 from logic import (
     calculate_cashflow,
@@ -114,7 +115,7 @@ CUSTOM_CSS = """
         color: #6b7280;
     }
 
-    /* Generic light card style (if needed later) */
+    /* Generic light card style (used in Wealthflow) */
     .tesorin-card {
         border-radius: 18px;
         padding: 1.1rem 1.2rem;
@@ -131,7 +132,7 @@ CUSTOM_CSS = """
         font-weight: 600;
     }
 
-    /* ---------- DARK HOME CARD (like your screenshot) ---------- */
+    /* ---------- DARK HOME CARD ---------- */
 
     .tesorin-home-card {
         border-radius: 24px;
@@ -230,6 +231,34 @@ CUSTOM_CSS = """
     .tesorin-home-bullets li {
         margin-bottom: 0.3rem;
     }
+
+    /* ---------- WEALTHFLOW (WALLETS) ---------- */
+
+    .tesorin-wallet-card {
+        border-radius: 16px;
+        padding: 0.9rem 1.0rem;
+        background-color: #ffffff;
+        border: 1px solid rgba(148, 163, 184, 0.35);
+        box-shadow: 0 18px 40px -32px rgba(15, 23, 42, 0.5);
+    }
+
+    .tesorin-wallet-name {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #111827;
+    }
+
+    .tesorin-wallet-balance {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-top: 0.25rem;
+    }
+
+    .tesorin-wallet-meta {
+        font-size: 0.75rem;
+        color: #6b7280;
+        margin-top: 0.25rem;
+    }
 </style>
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
@@ -275,6 +304,28 @@ def init_state() -> None:
     if "main_tab" not in ss:
         ss.main_tab = "home"
 
+    # Simple wallets + transactions for Wealthflow
+    if "wallets" not in ss:
+        ss.wallets = [
+            {
+                "id": "main",
+                "name": "Household wallet",
+                "transactions": [],  # list of dicts: date, category, note, amount
+            }
+        ]
+
+    if "wealthflow_view" not in ss:
+        ss.wealthflow_view = "overview"  # 'overview' or 'wallet'
+
+    if "selected_wallet_id" not in ss:
+        ss.selected_wallet_id = "main"
+
+    # Default period for wealthflow: this month to today
+    if "wealthflow_period" not in ss:
+        today = date.today()
+        start = today.replace(day=1)
+        ss.wealthflow_period = (start, today)
+
 
 def sync_screen_from_query_params() -> None:
     """
@@ -289,6 +340,32 @@ def sync_screen_from_query_params() -> None:
     valid = {"landing", "signup", "login", "country_profile", "main"}
     if screen_from_url in valid:
         st.session_state.screen = screen_from_url
+
+
+def get_wallet_by_id(wallets, wallet_id):
+    for w in wallets:
+        if w["id"] == wallet_id:
+            return w
+    return None
+
+
+def compute_wallet_stats(wallet, start_date, end_date):
+    txns = [
+        t
+        for t in wallet["transactions"]
+        if start_date <= t["date"] <= end_date
+    ]
+    balance = sum(t["amount"] for t in txns)
+    income = sum(t["amount"] for t in txns if t["amount"] > 0)
+    expenses = sum(-t["amount"] for t in txns if t["amount"] < 0)
+    change = balance  # simple model
+    return {
+        "balance": balance,
+        "income": income,
+        "expenses": expenses,
+        "change": change,
+        "transactions": txns,
+    }
 
 
 # ---------- SCREENS ----------
@@ -358,7 +435,10 @@ def page_signup() -> None:
                 return
 
             # Fake user object, real app would use returned Supabase user
-            st.session_state.user = {"email": email, "name": name or email.split("@")[0]}
+            st.session_state.user = {
+                "email": email,
+                "name": name or email.split("@")[0],
+            }
             st.session_state.screen = "country_profile"
             st.success("Account created. Let’s set your country and basic profile.")
 
@@ -483,7 +563,7 @@ def page_main() -> None:
             funded_ratio = 0.0
         funded_percent = funded_ratio * 100
 
-        # Clamp displayed cashflow at 0 if negative (so the card doesn't look weird)
+        # Clamp displayed cashflow at 0 if negative
         cashflow_display = cashflow if cashflow > 0 else 0.0
 
         home_html = f"""
@@ -520,34 +600,111 @@ def page_main() -> None:
 
         st.markdown(home_html, unsafe_allow_html=True)
 
-
-
     # --- WEALTHFLOW TAB ---
     elif tab == "wealthflow":
-        st.subheader("Wealthflow · income & expenses")
+        st.subheader("Wealthflow · wallets & transactions")
 
-        income = st.number_input(
-            f"Monthly income ({currency})",
-            min_value=0.0,
-            step=1000.0,
-            value=float(profile["income"]),
+        # Period picker
+        period_value = st.date_input(
+            "Period",
+            value=ss.wealthflow_period,
         )
-        expenses = st.number_input(
-            f"Monthly expenses ({currency})",
-            min_value=0.0,
-            step=1000.0,
-            value=float(profile["expenses"]),
-        )
+        if isinstance(period_value, (list, tuple)) and len(period_value) == 2:
+            start_date, end_date = period_value
+        else:
+            # If user picks a single date, treat as same start/end
+            start_date = end_date = period_value
+        ss.wealthflow_period = (start_date, end_date)
 
-        st.caption(
-            "Later this tab will let you add detailed categories and daily entries. "
-            "For now, it's just the core monthly numbers."
-        )
+        wallets = ss.wallets
+        wallet = get_wallet_by_id(wallets, ss.selected_wallet_id) or wallets[0]
+        stats = compute_wallet_stats(wallet, start_date, end_date)
 
-        if st.button("Save basics", use_container_width=True):
-            ss.profile["income"] = income
-            ss.profile["expenses"] = expenses
-            st.success("Saved. The Home tab now uses these numbers.")
+        if ss.wealthflow_view == "overview":
+            # Wallet summary card + simple metrics row
+            col_wallet, col_buttons = st.columns([2, 1])
+            with col_wallet:
+                balance_color = "#16a34a" if stats["balance"] >= 0 else "#ef4444"
+                wallet_html = f"""
+                <div class="tesorin-wallet-card">
+                  <div class="tesorin-wallet-name">{wallet['name']}</div>
+                  <div class="tesorin-wallet-balance" style="color:{balance_color};">
+                    {currency}{stats['balance']:,.2f}
+                  </div>
+                  <div class="tesorin-wallet-meta">
+                    {len(stats['transactions'])} transactions in this period
+                  </div>
+                </div>
+                """
+                st.markdown(wallet_html, unsafe_allow_html=True)
+            with col_buttons:
+                if st.button("Open wallet", use_container_width=True):
+                    ss.wealthflow_view = "wallet"
+
+            st.markdown("")
+            c1, c2, c3, c4 = st.columns(4)
+            with c1:
+                st.metric("Current balance", f"{currency}{stats['balance']:,.2f}")
+            with c2:
+                st.metric("Period change", f"{currency}{stats['change']:,.2f}")
+            with c3:
+                st.metric("Period expenses", f"{currency}{-stats['expenses']:,.2f}")
+            with c4:
+                st.metric("Period income", f"{currency}{stats['income']:,.2f}")
+
+            st.caption(
+                "Later this view can show charts for changes over days/weeks and category donuts. "
+                "For now it’s a simple snapshot."
+            )
+
+        else:  # wallet detail view
+            if st.button("← Back to wallets", use_container_width=True):
+                ss.wealthflow_view = "overview"
+
+            st.markdown(f"#### {wallet['name']} · transactions")
+
+            # Add transaction form
+            with st.form("add_transaction_form"):
+                tx_date = st.date_input("Date", value=date.today())
+                category = st.text_input("Category", value="General")
+                note = st.text_input("Note", value="")
+                amount = st.number_input(
+                    f"Amount ({currency}) – positive for income, negative for expense",
+                    value=0.0,
+                    step=100.0,
+                )
+
+                submitted = st.form_submit_button("Add transaction")
+
+            if submitted:
+                wallet["transactions"].append(
+                    {
+                        "date": tx_date,
+                        "category": category or "General",
+                        "note": note or "",
+                        "amount": float(amount),
+                    }
+                )
+                st.success("Transaction added.")
+                # Recompute stats for current period
+                stats = compute_wallet_stats(wallet, start_date, end_date)
+
+            # Transactions table
+            st.markdown("##### Transactions in this period")
+            if stats["transactions"]:
+                rows = []
+                for t in stats["transactions"]:
+                    rows.append(
+                        {
+                            "Date": t["date"].strftime("%b %d, %Y"),
+                            "Category": t["category"],
+                            "Note": t["note"],
+                            "Amount": f"{currency}{t['amount']:,.2f}",
+                        }
+                    )
+                st.table(rows)
+            else:
+                st.caption("No transactions in this period yet.")
 
     # --- NEXT STEP TAB ---
     elif tab == "next":
