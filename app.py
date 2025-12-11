@@ -828,10 +828,8 @@ def page_main() -> None:
                 st.caption("No transactions in this period yet.")
 
     
-    # --- NEXT STEP TAB ---
+      # --- NEXT STEP TAB ---
     elif tab == "next":
-        st.subheader("Next step · shape your first plan")
-
         ns = ss.next_step
 
         income = float(profile["income"])
@@ -840,7 +838,38 @@ def page_main() -> None:
         debt = float(profile["debt"])
 
         cashflow = calculate_cashflow(income, expenses)
+        e_target_for_default = emergency_fund_target(expenses, debt)
 
+        # ---------- Dark hero card for Next step ----------
+        goal_label = ns.get("nickname") or ns.get("primary_goal") or "Pick a focus goal"
+        monthly_preview = ns.get("monthly_amount", max(cashflow, 0))
+        if monthly_preview < 0:
+            monthly_preview = 0.0
+
+        if ns.get("primary_goal"):
+            hero_line = "You’re working on:"
+            pill_text = "in focus"
+        else:
+            hero_line = "No main goal picked yet."
+            pill_text = "start here"
+
+        next_html = (
+            '<div class="tesorin-home-card">'
+            '<div class="tesorin-home-title">Next step · shape your first plan</div>'
+            f'<div class="tesorin-home-subcopy">{hero_line}</div>'
+            '<div style="margin-top:0.5rem;">'
+            f'<span class="tesorin-home-amount">{goal_label}</span>'
+            f'<span class="tesorin-home-pill">{pill_text}</span>'
+            "</div>"
+            '<div class="tesorin-home-subcopy" style="margin-top:0.85rem;">'
+            "We’ll keep this simple: choose one main priority, a rough target, "
+            "and a monthly amount that feels realistic."
+            "</div>"
+            "</div>"
+        )
+        st.markdown(next_html, unsafe_allow_html=True)
+
+        # Context caption under the card
         if cashflow > 0:
             st.caption(
                 f"Right now it looks like you have about {currency}{cashflow:,.0f} "
@@ -856,8 +885,7 @@ def page_main() -> None:
                 "You’re roughly breaking even. These questions will help you see what to focus on first."
             )
 
-        e_target_for_default = emergency_fund_target(expenses, debt)
-
+        # ---------- Guided questions ----------
         primary_goal_options = [
             "Build or top up my emergency fund",
             "Clean up high-interest debt",
@@ -968,9 +996,8 @@ def page_main() -> None:
             ss.next_step = ns
             st.success("Saved. Scroll down for a simple next-step plan.")
 
+        # ---------- Simple next-step plan ----------
         if ns.get("primary_goal"):
-            st.markdown("### Your simple next-step plan")
-
             goal = ns["primary_goal"]
             monthly = ns.get("monthly_amount", 0.0)
             if monthly <= 0 and cashflow > 0:
@@ -983,6 +1010,8 @@ def page_main() -> None:
             e_target = emergency_fund_target(expenses, debt=debt)
             gap = max(e_target - savings, 0)
             months_to_buffer = gap / monthly if monthly > 0 else None
+
+            st.markdown("### Your simple next-step plan")
 
             if "emergency fund" in goal.lower():
                 st.write(
@@ -1026,7 +1055,9 @@ def page_main() -> None:
                 )
 
             elif "specific purchase" in goal.lower():
-                st.write("**Focus:** save for a specific purchase without breaking your basics.")
+                st.write(
+                    "**Focus:** save for a specific purchase without breaking your basics."
+                )
                 st.markdown(
                     f"- Target amount for this goal: **{currency}{target:,.0f}**.\n"
                     f"- With **{currency}{monthly:,.0f} per month**, estimate how many months it would take and compare to your timeframe.\n"
@@ -1095,11 +1126,10 @@ def page_main() -> None:
                         ss.profile["goals"].append(name)
                     st.success(f"Added new tracked goal: {name}")
 
-        # ---- Goal progress section (including Emergency fund) ----
+        # ---------- Goal progress section (Emergency fund + others) ----------
         if ss.goal_plans:
             st.markdown("### Track progress on your goals")
 
-            # Find an Emergency fund goal (by name or kind)
             emergency_goal = next(
                 (
                     g
@@ -1110,7 +1140,6 @@ def page_main() -> None:
                 None,
             )
 
-            # --- Dedicated Emergency fund section ---
             if emergency_goal:
                 st.markdown("#### Emergency fund")
 
@@ -1141,12 +1170,11 @@ def page_main() -> None:
 
                 st.markdown("---")
 
-            # --- Other goals ---
             st.markdown("#### Other goals")
 
             for idx, goal in enumerate(ss.goal_plans):
                 if emergency_goal is not None and goal is emergency_goal:
-                    continue  # skip, already shown above
+                    continue
 
                 target = goal.get("target", 0.0) or 0.0
                 saved = goal.get("saved", 0.0) or 0.0
@@ -1174,6 +1202,7 @@ def page_main() -> None:
                 if st.button("Add", key=f"goal_btn_{idx}"):
                     goal["saved"] += float(add_amount)
                     st.success("Goal updated.")
+
 
     # --- Bottom nav ---
     st.markdown("")
