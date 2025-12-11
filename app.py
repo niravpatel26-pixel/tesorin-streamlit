@@ -308,6 +308,7 @@ CUSTOM_CSS = """
         margin-top: 0.25rem;
     }
 </style>
+
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
