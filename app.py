@@ -28,7 +28,6 @@ st.set_page_config(
 # ---------- BASIC THEME / GLOBAL STYLING ----------
 
 CUSTOM_CSS = """
-CUSTOM_CSS = """
 <style>
     /* Import a Caslon-like serif font for the hero heading */
     @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600&display=swap');
