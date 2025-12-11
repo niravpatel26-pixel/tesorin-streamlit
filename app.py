@@ -693,7 +693,12 @@ def page_main() -> None:
     elif tab == "wealthflow":
         st.subheader("Wealthflow · wallets & transactions")
 
-        period_value = st.date_input("Period", value=ss.wealthflow_period)
+        # Period picker
+        period_value = st.date_input(
+            "Period",
+            value=ss.wealthflow_period,
+            help="Pick the dates you want to review for this wallet.",
+        )
         if isinstance(period_value, (list, tuple)) and len(period_value) == 2:
             start_date, end_date = period_value
         else:
@@ -705,49 +710,76 @@ def page_main() -> None:
         stats = compute_wallet_stats(wallet, start_date, end_date)
 
         if ss.wealthflow_view == "overview":
-            col_wallet, col_buttons = st.columns([2, 1])
-            with col_wallet:
-                balance_color = "#16a34a" if stats["balance"] >= 0 else "#ef4444"
-                wallet_html = f"""
-                <div class="tesorin-wallet-card">
-                  <div class="tesorin-wallet-name">{wallet['name']}</div>
-                  <div class="tesorin-wallet-balance" style="color:{balance_color};">
-                    {currency}{stats['balance']:,.2f}
+            # ---------- Dark snapshot card (matches Home style) ----------
+            balance_color = "#22c55e" if stats["balance"] >= 0 else "#f87171"
+            change_color = "#22c55e" if stats["change"] >= 0 else "#f97316"
+
+            period_label = (
+                f"{start_date.strftime('%b %d, %Y')} — {end_date.strftime('%b %d, %Y')}"
+            )
+
+            wealth_html = f"""
+            <div class="tesorin-home-card">
+              <div class="tesorin-home-title">Wallet snapshot</div>
+              <div class="tesorin-home-subcopy">
+                {wallet['name']} · {period_label}
+              </div>
+
+              <div style="margin-top:0.75rem; display:flex; align-items:flex-end; gap:1.75rem; flex-wrap:wrap;">
+                <div>
+                  <div class="tesorin-home-amount" style="color:{balance_color};">
+                    {currency}{stats['balance']:,.0f}
                   </div>
-                  <div class="tesorin-wallet-meta">
-                    {len(stats['transactions'])} transactions in this period
+                  <span class="tesorin-home-pill">current balance</span>
+                </div>
+
+                <div style="font-size:0.8rem; color:#e5e7eb; display:flex; gap:1.75rem; flex-wrap:wrap;">
+                  <div>
+                    <div style="opacity:0.7;">Period change</div>
+                    <div style="font-weight:600; color:{change_color};">
+                      {currency}{stats['change']:,.0f}
+                    </div>
+                  </div>
+                  <div>
+                    <div style="opacity:0.7;">Total income</div>
+                    <div style="font-weight:600; color:#16a34a;">
+                      {currency}{stats['income']:,.0f}
+                    </div>
+                  </div>
+                  <div>
+                    <div style="opacity:0.7;">Total expenses</div>
+                    <div style="font-weight:600; color:#f87171;">
+                      {currency}{stats['expenses']:,.0f}
+                    </div>
                   </div>
                 </div>
-                """
-                st.markdown(wallet_html, unsafe_allow_html=True)
-            with col_buttons:
-                if st.button("Open wallet", use_container_width=True):
+              </div>
+
+              <ul class="tesorin-home-bullets">
+                <li>One simple wallet for now — later you’ll be able to add more accounts.</li>
+                <li>Use the transaction view below to log real income and spending.</li>
+              </ul>
+            </div>
+            """
+            st.markdown(wealth_html, unsafe_allow_html=True)
+
+            # Button row under the card
+            st.markdown("")
+            col_wallet_btn, _ = st.columns([1, 2])
+            with col_wallet_btn:
+                if st.button("View & add transactions", use_container_width=True):
                     ss.wealthflow_view = "wallet"
                     st.rerun()
 
-            st.markdown("")
-            c1, c2, c3, c4 = st.columns(4)
-            with c1:
-                st.metric("Current balance", f"{currency}{stats['balance']:,.2f}")
-            with c2:
-                st.metric("Period change", f"{currency}{stats['change']:,.2f}")
-            with c3:
-                st.metric("Period expenses", f"{currency}{-stats['expenses']:,.2f}")
-            with c4:
-                st.metric("Period income", f"{currency}{stats['income']:,.2f}")
-
-            st.caption(
-                "Later this view can show charts for changes over days/weeks and category donuts. "
-                "For now it’s a simple snapshot."
-            )
-
         else:
-            if st.button("← Back to wallets", use_container_width=True):
+            # ---------- Wallet detail view: add + list transactions ----------
+            if st.button("← Back to snapshot", use_container_width=True):
                 ss.wealthflow_view = "overview"
                 st.rerun()
 
             st.markdown(f"#### {wallet['name']} · transactions")
 
+            # Add transaction form
             with st.form("add_transaction_form"):
                 tx_date = st.date_input("Date", value=date.today())
                 category = st.text_input("Category", value="General")
@@ -771,6 +803,7 @@ def page_main() -> None:
                 st.success("Transaction added.")
                 stats = compute_wallet_stats(wallet, start_date, end_date)
 
+            # Transactions table
             st.markdown("##### Transactions in this period")
             if stats["transactions"]:
                 rows = [
@@ -785,7 +818,7 @@ def page_main() -> None:
                 st.table(rows)
             else:
                 st.caption("No transactions in this period yet.")
-
+    
     # --- NEXT STEP TAB ---
     elif tab == "next":
         st.subheader("Next step · shape your first plan")
