@@ -297,7 +297,7 @@ def init_state() -> None:
             "savings": 0.0,
             "debt": 0.0,
             "high_interest_debt": False,
-            "goals": [],
+            "goals": [],  # list of goal names you’re tracking
         }
 
     # Which tab inside the app shell are we on? (home, wealthflow, next)
@@ -325,29 +325,8 @@ def init_state() -> None:
         today = date.today()
         start = today.replace(day=1)
         ss.wealthflow_period = (start, today)
-    # Simple wallets + transactions for Wealthflow
-    if "wallets" not in ss:
-        ss.wallets = [
-            {
-                "id": "main",
-                "name": "Household wallet",
-                "transactions": [],  # list of dicts: date, category, note, amount
-            }
-        ]
 
-    if "wealthflow_view" not in ss:
-        ss.wealthflow_view = "overview"  # 'overview' or 'wallet'
-
-    if "selected_wallet_id" not in ss:
-        ss.selected_wallet_id = "main"
-
-    # Default period for wealthflow: this month to today
-    if "wealthflow_period" not in ss:
-        today = date.today()
-        start = today.replace(day=1)
-        ss.wealthflow_period = (start, today)
-
-    # -------- NEW: store answers for Next step --------
+    # Store answers for Next step (latest “thinking” about one goal)
     if "next_step" not in ss:
         ss.next_step = {
             "primary_goal": None,
@@ -355,7 +334,14 @@ def init_state() -> None:
             "why": "",
             "risk": 3,
             "monthly_amount": 0.0,
+            "nickname": "",
+            "target_amount": 0.0,
         }
+
+    # List of tracked goals with progress
+    # each item: {id, name, kind, target, saved, monthly_target, timeframe, why}
+    if "goal_plans" not in ss:
+        ss.goal_plans = []
 
 
 
@@ -576,6 +562,7 @@ def page_main() -> None:
     tab = ss.main_tab
 
     # --- HOME TAB ---
+        # --- HOME TAB ---
     if tab == "home":
         income = float(profile["income"])
         expenses = float(profile["expenses"])
@@ -631,6 +618,27 @@ def page_main() -> None:
         """
 
         st.markdown(home_html, unsafe_allow_html=True)
+
+        # Extra card: 2–3 tracked goals
+        if ss.goal_plans:
+            st.markdown('<div class="tesorin-card"><h4>Goals snapshot</h4>', unsafe_allow_html=True)
+
+            for goal in ss.goal_plans[:3]:  # show up to 3
+                target = goal.get("target", 0.0) or 0.0
+                saved = goal.get("saved", 0.0) or 0.0
+                if target > 0:
+                    pct = int(min(100, max(0, saved / target * 100)))
+                    st.caption(
+                        f"{goal['name']}: {currency}{saved:,.0f} / {currency}{target:,.0f} ({pct}%)"
+                    )
+                    st.progress(pct)
+                else:
+                    st.caption(
+                        f"{goal['name']}: {currency}{saved:,.0f} saved so far (no target set yet)"
+                    )
+
+            st.markdown("</div>", unsafe_allow_html=True)
+
 
     # --- WEALTHFLOW TAB ---
     elif tab == "wealthflow":
@@ -739,6 +747,7 @@ def page_main() -> None:
                 st.caption("No transactions in this period yet.")
 
         # --- NEXT STEP TAB ---
+        # --- NEXT STEP TAB ---
     elif tab == "next":
         st.subheader("Next step · shape your first plan")
 
@@ -765,6 +774,9 @@ def page_main() -> None:
             st.caption(
                 "You’re roughly breaking even. These questions will help you see what to focus on first."
             )
+
+        # We’ll use this for defaults if they pick Emergency fund
+        e_target_for_default = emergency_fund_target(expenses, debt)
 
         # --- Question form ---
         primary_goal_options = [
@@ -807,10 +819,38 @@ def page_main() -> None:
                 index=_time_index(),
             )
 
+            default_name = ns.get("nickname", "")
+            if not default_name:
+                if "emergency fund" in primary_goal.lower():
+                    default_name = "Emergency fund"
+                elif "debt" in primary_goal.lower():
+                    default_name = "Debt payoff"
+                elif "investing" in primary_goal.lower():
+                    default_name = "Long-term investing"
+                elif "specific purchase" in primary_goal.lower():
+                    default_name = "Big purchase"
+            goal_name = st.text_input(
+                "Give this goal a short name",
+                value=default_name,
+                placeholder="Example: Starter emergency fund, Car downpayment, etc.",
+            )
+
             why = st.text_area(
                 "In one or two sentences, why does this matter to you?",
                 value=ns.get("why", ""),
                 placeholder="Example: I want a 3-month buffer so I can change jobs without panic.",
+            )
+
+            # Default target amount
+            target_default = ns.get("target_amount", 0.0)
+            if target_default == 0 and "emergency fund" in primary_goal.lower():
+                target_default = float(e_target_for_default)
+
+            target_amount = st.number_input(
+                f"Rough target amount for this goal ({currency})",
+                min_value=0.0,
+                step=1000.0,
+                value=float(target_default),
             )
 
             risk = st.slider(
@@ -842,10 +882,172 @@ def page_main() -> None:
                     "why": why,
                     "risk": int(risk),
                     "monthly_amount": float(monthly_amount),
+                    "nickname": goal_name,
+                    "target_amount": float(target_amount),
                 }
             )
             ss.next_step = ns
             st.success("Saved. Scroll down for a simple next-step plan.")
+
+        # --- Show the plan if we have answers ---
+        if ns.get("primary_goal"):
+            st.markdown("### Your simple next-step plan")
+
+            goal = ns["primary_goal"]
+            monthly = ns.get("monthly_amount", 0.0)
+            if monthly <= 0 and cashflow > 0:
+                monthly = max(cashflow * 0.3, 0)  # fall-back guess
+
+            target = ns.get("target_amount", 0.0)
+            if target == 0 and "emergency fund" in goal.lower():
+                target = float(e_target_for_default)
+
+            # Emergency-fund specific numbers
+            e_target = emergency_fund_target(expenses, debt=debt)
+            gap = max(e_target - savings, 0)
+            months_to_buffer = gap / monthly if monthly > 0 else None
+
+            # Tailored text based on chosen focus
+            if "emergency fund" in goal.lower():
+                st.write(
+                    f"**Focus:** build a simple emergency fund of about "
+                    f"**{currency}{e_target:,.0f}**."
+                )
+                lines = []
+                lines.append(
+                    f"- Aim to send **{currency}{monthly:,.0f} per month** into a separate high-safety account."
+                )
+                if months_to_buffer:
+                    lines.append(
+                        f"- At that pace, you’d reach this buffer in roughly **{months_to_buffer:.1f} months**."
+                    )
+                lines.append(
+                    "- Keep investments very low-risk until this buffer is in place."
+                )
+                lines.append(
+                    "- Revisit this tab once the buffer is at least 50–75% funded."
+                )
+                st.markdown("\n".join(lines))
+
+            elif "debt" in goal.lower():
+                st.write(
+                    "**Focus:** clean up high-interest debt while keeping a small safety cushion."
+                )
+                st.markdown(
+                    f"- Choose a fixed payment of **{currency}{monthly:,.0f} per month** toward your highest-interest debt.\n"
+                    "- Keep a mini-buffer of ~1 month of expenses in cash before making extra payments.\n"
+                    "- Each month, log payments in Wealthflow so you can see your balance trend down.\n"
+                    "- When high-interest debt is gone, redirect this same amount into investing."
+                )
+
+            elif "investing" in goal.lower():
+                st.write("**Focus:** start a calm, automatic investing habit.")
+                st.markdown(
+                    f"- Pick a realistic starting amount, e.g. **{currency}{monthly:,.0f} per month**.\n"
+                    "- Use a simple diversified fund rather than chasing single stocks.\n"
+                    "- Set a rule: you only review this plan once per quarter, not every market headline.\n"
+                    "- Track your overall invested balance in Tesorin, not day-to-day price moves."
+                )
+
+            elif "specific purchase" in goal.lower():
+                st.write("**Focus:** save for a specific purchase without breaking your basics.")
+                st.markdown(
+                    f"- Target amount for this goal: **{currency}{target:,.0f}**.\n"
+                    f"- With **{currency}{monthly:,.0f} per month**, estimate how many months it would take and compare to your timeframe.\n"
+                    "- Keep this pot separate from your emergency fund.\n"
+                    "- If the timeline feels too long, either lower the target or raise the monthly amount once cashflow improves."
+                )
+
+            else:  # I’m not sure yet
+                st.write("**Focus:** get the basics solid before picking a specific goal.")
+                st.markdown(
+                    "- First, make sure your monthly cashflow is positive (Wealthflow tab).\n"
+                    "- Build at least 1 month of essential expenses as a starter buffer.\n"
+                    "- Then come back here and pick either emergency fund, debt, or long-term investing as your first focus."
+                )
+
+            st.markdown("#### Next 7 days")
+            st.markdown(
+                "- Write down your current balances: cash, debt, and any investments.\n"
+                "- Decide where your emergency buffer or goal savings will live (which account).\n"
+                "- If you’re comfortable, set up an automatic monthly transfer for the amount you chose."
+            )
+
+            st.markdown("#### Next 30–90 days")
+            st.markdown(
+                "- Track at least one month of real spending in the Wealthflow tab.\n"
+                "- Adjust your monthly goal amount if it feels too tight or too easy.\n"
+                "- Revisit this tab in a month to see if your focus still feels right."
+            )
+
+            # ---- TURN PLAN INTO A TRACKED GOAL ----
+            create_clicked = st.button("Add this as a tracked goal")
+
+            if create_clicked:
+                name = ns.get("nickname") or goal
+                target = ns.get("target_amount", 0.0)
+                if target == 0 and "emergency fund" in goal.lower():
+                    target = float(e_target)
+
+                monthly_target = monthly
+                existing = next(
+                    (g for g in ss.goal_plans if g["name"] == name), None
+                )
+                if existing:
+                    existing.update(
+                        {
+                            "target": target,
+                            "monthly_target": monthly_target,
+                            "timeframe": ns["timeframe"],
+                            "why": ns["why"],
+                            "kind": goal,
+                        }
+                    )
+                    st.success(f"Updated tracked goal: {name}")
+                else:
+                    new_goal = {
+                        "id": f"g{len(ss.goal_plans)+1}",
+                        "name": name,
+                        "kind": goal,
+                        "target": target,
+                        "saved": 0.0,
+                        "monthly_target": monthly_target,
+                        "timeframe": ns["timeframe"],
+                        "why": ns["why"],
+                    }
+                    ss.goal_plans.append(new_goal)
+                    if name not in ss.profile["goals"]:
+                        ss.profile["goals"].append(name)
+                    st.success(f"Added new tracked goal: {name}")
+
+        # ---- UPDATE PROGRESS ON EXISTING GOALS ----
+        if ss.goal_plans:
+            st.markdown("### Track progress on your goals")
+
+            for idx, goal in enumerate(ss.goal_plans):
+                target = goal.get("target", 0.0) or 0.0
+                saved = goal.get("saved", 0.0) or 0.0
+                if target > 0:
+                    pct = int(min(100, max(0, saved / target * 100)))
+                else:
+                    pct = 0
+
+                st.caption(
+                    f"**{goal['name']}** — {currency}{saved:,.0f}"
+                    + (f" / {currency}{target:,.0f} ({pct}% complete)" if target > 0 else "")
+                )
+                st.progress(pct)
+
+                add_amount = st.number_input(
+                    f"Add amount to '{goal['name']}' ({currency})",
+                    min_value=0.0,
+                    step=100.0,
+                    key=f"goal_add_{idx}",
+                )
+                if st.button("Add", key=f"goal_btn_{idx}"):
+                    goal["saved"] += float(add_amount)
+                    st.success("Goal updated.")
+
 
         # --- Show the plan if we have answers ---
         if ns.get("primary_goal"):
