@@ -637,10 +637,10 @@ def render_home_tab() -> None:
 def page_main() -> None:
     ss = st.session_state
 
+    # Global Tesorin header (logo + tagline)
     render_brand_header()
-    st.markdown('<div class="tesorin-app-subtitle">Wealthflow planner</div>', unsafe_allow_html=True)
 
-    # top-right dropdown / navigation (profile + logout)
+    # Top-right navigation (Profile / Log out)
     render_top_navbar()
 
     tab = ss.main_tab
@@ -652,6 +652,7 @@ def page_main() -> None:
     elif tab == "next":
         render_next_step_tab()
 
+    # Bottom tab navigation
     st.markdown("")
     st.markdown("---")
     nav1, nav2, nav3 = st.columns(3)
@@ -659,15 +660,15 @@ def page_main() -> None:
     with nav1:
         if st.button("💸 Wealthflow", use_container_width=True):
             ss.main_tab = "wealthflow"
-            st.rerun()
+            st.experimental_rerun()
     with nav2:
         if st.button("🏠 Home", use_container_width=True):
             ss.main_tab = "home"
-            st.rerun()
+            st.experimental_rerun()
     with nav3:
         if st.button("➡ Next step", use_container_width=True):
             ss.main_tab = "next"
-            st.rerun()
+            st.experimental_rerun()
 
 
 # ---------- MAIN ROUTER ----------
