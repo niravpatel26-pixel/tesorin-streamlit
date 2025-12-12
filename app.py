@@ -22,7 +22,6 @@ from wealthflow import render_wealthflow_tab
 from nextstep import render_next_step_tab
 from navigation import render_top_navbar
 
-
 # ---------- PAGE CONFIG ----------
 
 st.set_page_config(
@@ -40,7 +39,6 @@ CUSTOM_CSS = """
         background: radial-gradient(circle at 0% 0%, #dbeafe 0, #f5f7fb 40%, #e5e7eb 100%);
         color: #0f172a;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-        font-size: 0.95rem;
     }
 
     .block-container {
@@ -56,7 +54,7 @@ CUSTOM_CSS = """
         align-items: center;
         gap: 0.7rem;
         margin-top: 0.4rem;
-        margin-bottom: 1.6rem;
+        margin-bottom: 1.4rem;
     }
 
     .tesorin-brand-logo {
@@ -68,14 +66,17 @@ CUSTOM_CSS = """
         align-items: center;
         justify-content: center;
         box-shadow: 0 18px 60px -26px rgba(15, 23, 42, 0.55);
-        font-weight: 700;
-        font-size: 1.1rem;
-        color: #020617;
+    }
+
+    .tesorin-brand-logo-img {
+        max-width: 24px;
+        max-height: 24px;
+        display: block;
     }
 
     .tesorin-brand-name {
         font-family: "Cormorant Garamond", "Times New Roman", serif;
-        font-size: 1.15rem;
+        font-size: 1.1rem;
         letter-spacing: 0.32em;
         text-transform: uppercase;
         color: #020617;
@@ -87,25 +88,10 @@ CUSTOM_CSS = """
         margin-top: 0.05rem;
     }
 
-    /* Old wordmark classes kept just in case something uses them */
-    .tesorin-logo-word {
-        font-weight: 600;
-        letter-spacing: 0.12em;
-        font-size: 0.9rem;
-        text-transform: uppercase;
-    }
-
-    .tesorin-tagline {
-        font-size: 0.85rem;
-        color: #6b7280;
-        margin-top: 0.15rem;
-        margin-bottom: 1.4rem;
-    }
-
-    /* Generic dark card (home + auth) */
+    /* Generic dark card (hero + home main card) */
     .tesorin-dark-card {
         border-radius: 30px;
-        padding: 1.6rem 1.7rem 1.8rem;
+        padding: 1.8rem 1.9rem 1.9rem;
         background: radial-gradient(circle at 0% 0%, #111827 0, #020617 55%, #020617 100%);
         color: #e5e7eb;
         box-shadow:
@@ -114,46 +100,23 @@ CUSTOM_CSS = """
         border: 1px solid rgba(148, 163, 184, 0.4);
     }
 
-    /* In-app top bar for main planner */
-    .tesorin-appbar {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 0 0 1.1rem;
+    /* Landing hero text */
+    .tesorin-hero-title {
+        font-family: "Cormorant Garamond", "Times New Roman", serif;
+        font-size: 2.3rem;
+        line-height: 1.1;
+        margin-bottom: 0.7rem;
     }
 
-    .tesorin-appbar-left {
-        display: flex;
-        align-items: center;
-        gap: 0.6rem;
-    }
-
-    .tesorin-app-icon {
-        width: 32px;
-        height: 32px;
-        border-radius: 999px;
-        background-color: #020617;
-        color: #f9fafb;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 700;
-        font-size: 0.9rem;
-    }
-
-    .tesorin-app-title {
-        font-weight: 600;
+    .tesorin-hero-body {
         font-size: 0.95rem;
-    }
-
-    .tesorin-app-subtitle {
-        font-size: 0.8rem;
-        color: #6b7280;
+        color: #cbd5f5;
+        max-width: 32rem;
     }
 
     /* Home main card pieces */
     .tesorin-home-title {
-        font-size: 0.85rem;
+        font-size: 0.9rem;
         font-weight: 500;
         color: #cbd5f5;
     }
@@ -164,15 +127,14 @@ CUSTOM_CSS = """
         color: #f9fafb;
     }
 
-    .tesorin-home-pill,
-    .tesorin-home-pill-main {
+    .tesorin-home-pill {
         display: inline-flex;
         align-items: center;
         padding: 0.15rem 0.75rem;
         border-radius: 999px;
         background-color: #16a34a;
         color: #022c22;
-        font-size: 0.75rem;
+        font-size: 0.8rem;
         font-weight: 600;
         margin-left: 0.55rem;
     }
@@ -232,7 +194,7 @@ CUSTOM_CSS = """
 
     .tesorin-home-bullets {
         margin-top: 1.0rem;
-        font-size: 0.8rem;
+        font-size: 0.78rem;
         color: #e5e7eb;
         padding-left: 1.1rem;
     }
@@ -286,29 +248,21 @@ CUSTOM_CSS = """
         color: #9ca3af;
     }
 
-    /* Auth headings */
-    .tesorin-auth-title {
-        font-family: "Cormorant Garamond", "Times New Roman", serif;
-        font-size: 2.0rem;
-        line-height: 1.1;
-        margin: 0.4rem 0 0.6rem;
-        color: #f9fafb;
+    /* In-app small subtitle (above tabs) */
+    .tesorin-app-subtitle {
+        font-size: 0.85rem;
+        color: #6b7280;
+        margin-bottom: 0.4rem;
     }
 
-    .tesorin-auth-subtitle {
-        font-size: 0.9rem;
-        color: #cbd5f5;
-        margin-bottom: 1.4rem;
-    }
-
-    /* Global button theming (nav + forms) */
+    /* Global button theming */
     div.stButton > button {
         border-radius: 999px;
         border: 1px solid rgba(148, 163, 184, 0.6);
         background: #ffffff;
         color: #0f172a;
         font-size: 0.85rem;
-        padding: 0.4rem 1.4rem;
+        padding: 0.45rem 1.4rem;
         font-weight: 500;
         box-shadow: 0 10px 25px -18px rgba(15, 23, 42, 0.8);
     }
@@ -318,29 +272,31 @@ CUSTOM_CSS = """
         background: #eff6ff;
         color: #0f172a;
     }
-
-    /* Make primary CTA buttons pop a bit more */
-    .tesorin-primary-btn button {
-        background: #0f172a !important;
-        color: #e5e7eb !important;
-        border-color: #0f172a !important;
-    }
-
-    .tesorin-primary-btn button:hover {
-        background: #020617 !important;
-    }
-
-    /* Bottom tab nav spacing */
-    .tesorin-bottom-nav {
-        margin-top: 1.5rem;
-    }
 </style>
 """
 
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
-
 # ---------- SMALL HELPERS ----------
+
+
+def render_brand_header() -> None:
+    """Brand logo + TESORIN wordmark shown on every page."""
+    st.markdown(
+        """
+        <div class="tesorin-brand-header">
+          <div class="tesorin-brand-logo">
+            <img src="favicon.png" alt="Tesorin logo" class="tesorin-brand-logo-img" />
+          </div>
+          <div>
+            <div class="tesorin-brand-name">TESORIN</div>
+            <div class="tesorin-brand-tagline">Start small. Plan big.</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 def get_currency(country_code: str) -> str:
     if country_code == "IN":
@@ -418,39 +374,20 @@ def sync_screen_from_query_params() -> None:
         st.session_state.screen = screen_from_url
 
 
-# ---------- UI HELPERS ----------
-
-def render_brand_header() -> None:
-    """Brand logo + TESORIN wordmark shown on every page."""
-    st.markdown(
-        """
-        <div class="tesorin-brand-header">
-          <div class="tesorin-brand-logo">t</div>
-          <div>
-            <div class="tesorin-brand-name">TESORIN</div>
-            <div class="tesorin-brand-tagline">Start small. Plan big.</div>
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 # ---------- SCREENS ----------
 
 def page_landing() -> None:
+    render_brand_header()
+
     left, main, right = st.columns([0.6, 2, 0.6])
-
     with main:
-        render_brand_header()
-
         st.markdown(
             """
             <div class="tesorin-dark-card">
-              <div class="tesorin-auth-title">
+              <div class="tesorin-hero-title">
                 Build your first serious money plan.
               </div>
-              <div class="tesorin-auth-subtitle">
+              <div class="tesorin-hero-body">
                 A calm place to see your cashflow, buffer, and goals —
                 without trading screens or product noise.
               </div>
@@ -459,18 +396,15 @@ def page_landing() -> None:
             unsafe_allow_html=True,
         )
 
-        st.markdown("")  # small spacer
+        st.markdown("")  # spacer
 
         c1, c2 = st.columns(2)
         with c1:
-            st.markdown('<div class="tesorin-primary-btn">', unsafe_allow_html=True)
-            if st.button("Sign up", use_container_width=True):
+            if st.button("Sign up", key="landing_signup", use_container_width=True):
                 st.session_state.screen = "signup"
                 st.rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
-
         with c2:
-            if st.button("Log in", use_container_width=True):
+            if st.button("Log in", key="landing_login", use_container_width=True):
                 st.session_state.screen = "login"
                 st.rerun()
 
@@ -480,10 +414,11 @@ def page_landing() -> None:
 
 
 def page_signup() -> None:
+    render_brand_header()
+
     spacer_left, main, spacer_right = st.columns([1, 2, 1])
     with main:
-        render_brand_header()
-        st.markdown("### Create your Tesorin account")
+        st.markdown("### Sign up")
 
         with st.form("signup_form", clear_on_submit=False):
             name = st.text_input("Preferred name (optional)")
@@ -519,9 +454,10 @@ def page_signup() -> None:
 
 
 def page_login() -> None:
+    render_brand_header()
+
     spacer_left, main, spacer_right = st.columns([1, 2, 1])
     with main:
-        render_brand_header()
         st.markdown("### Welcome back")
 
         with st.form("login_form", clear_on_submit=False):
@@ -550,10 +486,11 @@ def page_login() -> None:
 
 
 def page_country_profile() -> None:
+    render_brand_header()
+
     ss = st.session_state
     profile = ss.profile
 
-    render_brand_header()
     st.markdown("### 1. Country & basic profile")
 
     if ss.user:
@@ -595,8 +532,8 @@ def render_home_tab() -> None:
     debt = float(profile["debt"])
 
     cashflow = calculate_cashflow(income, expenses)
-    _ = calculate_savings_rate(income, cashflow)
-    _low_target, _high_target = savings_rate_target(country, income)
+    savings_rate = calculate_savings_rate(income, cashflow)
+    low_target, high_target = savings_rate_target(country, income)
     e_target = emergency_fund_target(expenses, debt)
 
     emergency_goal = None
@@ -701,24 +638,9 @@ def page_main() -> None:
     ss = st.session_state
 
     render_brand_header()
+    st.markdown('<div class="tesorin-app-subtitle">Wealthflow planner</div>', unsafe_allow_html=True)
 
-    st.markdown(
-        """
-        <div class="tesorin-appbar">
-          <div class="tesorin-appbar-left">
-            <div class="tesorin-app-icon">T</div>
-            <div>
-              <div class="tesorin-app-title">Tesorin</div>
-              <div class="tesorin-app-subtitle">Wealthflow planner</div>
-            </div>
-          </div>
-          <div class="tesorin-app-subtitle">Logged in</div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # top-right dropdown (Profile / Log out)
+    # top-right dropdown / navigation (profile + logout)
     render_top_navbar()
 
     tab = ss.main_tab
