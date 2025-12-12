@@ -802,11 +802,11 @@ def page_main() -> None:
             else:
                 st.caption("No transactions in this period yet.")
 
-    # ================= NEXT STEP TAB =================
+        # --- NEXT STEP TAB ---
     elif tab == "next":
         st.subheader("Next step · shape your first plan")
 
-        ns = ss.next_step  # <---- THIS is what was missing in your error
+        ns = ss.next_step
 
         income = float(profile["income"])
         expenses = float(profile["expenses"])
@@ -832,6 +832,7 @@ def page_main() -> None:
 
         e_target_for_default = emergency_fund_target(expenses, debt)
 
+        # --- options + index helpers ---------------------------------
         primary_goal_options = [
             "Build or top up my emergency fund",
             "Clean up high-interest debt",
@@ -840,13 +841,13 @@ def page_main() -> None:
             "I’m not sure yet",
         ]
 
-def _goal_index():
-    # Read from session_state directly so we don't depend on outer `ns`
-    ns_local = st.session_state.get("next_step", {})
-    g = ns_local.get("primary_goal")
-    if g in primary_goal_options:
-        return primary_goal_options.index(g)
-    return 0
+        def _goal_index() -> int:
+            """Pick the right default index for the primary-goal selectbox."""
+            ns_local = st.session_state.get("next_step", {})
+            g = ns_local.get("primary_goal")
+            if g in primary_goal_options:
+                return primary_goal_options.index(g)
+            return 0
 
         timeframe_options = [
             "Next 3 months",
@@ -855,13 +856,15 @@ def _goal_index():
             "More than 3 years",
         ]
 
-def _time_index():
-    ns_local = st.session_state.get("next_step", {})
-    t = ns_local.get("timeframe")
-    if t in timeframe_options:
-        return timeframe_options.index(t)
-    return 1
+        def _time_index() -> int:
+            """Pick the right default index for the timeframe selectbox."""
+            ns_local = st.session_state.get("next_step", {})
+            t = ns_local.get("timeframe")
+            if t in timeframe_options:
+                return timeframe_options.index(t)
+            return 1
 
+        # --- questions form -------------------------------------------
         with st.form("next_step_form", clear_on_submit=False):
             primary_goal = st.selectbox(
                 "What feels like your top priority right now?",
@@ -877,13 +880,14 @@ def _time_index():
 
             default_name = ns.get("nickname", "")
             if not default_name:
-                if "emergency fund" in primary_goal.lower():
+                lower = primary_goal.lower()
+                if "emergency fund" in lower:
                     default_name = "Emergency fund"
-                elif "debt" in primary_goal.lower():
+                elif "debt" in lower:
                     default_name = "Debt payoff"
-                elif "investing" in primary_goal.lower():
+                elif "investing" in lower:
                     default_name = "Long-term investing"
-                elif "specific purchase" in primary_goal.lower():
+                elif "specific purchase" in lower:
                     default_name = "Big purchase"
 
             goal_name = st.text_input(
@@ -945,7 +949,7 @@ def _time_index():
             ss.next_step = ns
             st.success("Saved. Scroll down for a simple next-step plan.")
 
-        # ----- SIMPLE NEXT-STEP PLAN -----
+        # --- suggested plan + create tracked goal ---------------------
         if ns.get("primary_goal"):
             st.markdown("### Your simple next-step plan")
 
@@ -967,19 +971,18 @@ def _time_index():
                     f"**Focus:** build a simple emergency fund of about "
                     f"**{currency}{e_target:,.0f}**."
                 )
-                lines = []
-                lines.append(
-                    f"- Aim to send **{currency}{monthly:,.0f} per month** into a separate high-safety account."
-                )
+                lines = [
+                    f"- Aim to send **{currency}{monthly:,.0f} per month** into a separate high-safety account.",
+                ]
                 if months_to_buffer:
                     lines.append(
                         f"- At that pace, you’d reach this buffer in roughly **{months_to_buffer:.1f} months**."
                     )
-                lines.append(
-                    "- Keep investments very low-risk until this buffer is in place."
-                )
-                lines.append(
-                    "- Revisit this tab once the buffer is at least 50–75% funded."
+                lines.extend(
+                    [
+                        "- Keep investments very low-risk until this buffer is in place.",
+                        "- Revisit this tab once the buffer is at least 50–75% funded.",
+                    ]
                 )
                 st.markdown("\n".join(lines))
 
@@ -1004,9 +1007,7 @@ def _time_index():
                 )
 
             elif "specific purchase" in goal.lower():
-                st.write(
-                    "**Focus:** save for a specific purchase without breaking your basics."
-                )
+                st.write("**Focus:** save for a specific purchase without breaking your basics.")
                 st.markdown(
                     f"- Target amount for this goal: **{currency}{target:,.0f}**.\n"
                     f"- With **{currency}{monthly:,.0f} per month**, estimate how many months it would take and compare to your timeframe.\n"
@@ -1015,9 +1016,7 @@ def _time_index():
                 )
 
             else:
-                st.write(
-                    "**Focus:** get the basics solid before picking a specific goal."
-                )
+                st.write("**Focus:** get the basics solid before picking a specific goal.")
                 st.markdown(
                     "- First, make sure your monthly cashflow is positive (Wealthflow tab).\n"
                     "- Build at least 1 month of essential expenses as a starter buffer.\n"
@@ -1077,11 +1076,10 @@ def _time_index():
                         ss.profile["goals"].append(name)
                     st.success(f"Added new tracked goal: {name}")
 
-        # ----- GOAL PROGRESS CONTROLS -----
+        # --- Track progress section (Emergency fund + other goals) ----
         if ss.goal_plans:
             st.markdown("### Track progress on your goals")
 
-            # Try to find an Emergency fund goal (by name or kind)
             emergency_goal = next(
                 (
                     g
@@ -1092,7 +1090,6 @@ def _time_index():
                 None,
             )
 
-            # --- Dedicated Emergency fund section ---
             if emergency_goal:
                 st.markdown("#### Emergency fund")
 
@@ -1123,12 +1120,11 @@ def _time_index():
 
                 st.markdown("---")
 
-            # --- Other goals ---
             st.markdown("#### Other goals")
 
             for idx, goal in enumerate(ss.goal_plans):
                 if emergency_goal is not None and goal is emergency_goal:
-                    continue  # skip, already shown above
+                    continue  # already shown
 
                 target = goal.get("target", 0.0) or 0.0
                 saved = goal.get("saved", 0.0) or 0.0
@@ -1156,6 +1152,7 @@ def _time_index():
                 if st.button("Add", key=f"goal_btn_{idx}"):
                     goal["saved"] += float(add_amount)
                     st.success("Goal updated.")
+
 
     # ================ BOTTOM TAB NAV ONLY ================
     st.markdown("")
