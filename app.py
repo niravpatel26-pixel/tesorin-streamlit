@@ -840,11 +840,13 @@ def page_main() -> None:
             "I’m not sure yet",
         ]
 
-        def _goal_index():
-            g = ns.get("primary_goal")
-            if g in primary_goal_options:
-                return primary_goal_options.index(g)
-            return 0
+def _goal_index():
+    # Read from session_state directly so we don't depend on outer `ns`
+    ns_local = st.session_state.get("next_step", {})
+    g = ns_local.get("primary_goal")
+    if g in primary_goal_options:
+        return primary_goal_options.index(g)
+    return 0
 
         timeframe_options = [
             "Next 3 months",
@@ -853,11 +855,12 @@ def page_main() -> None:
             "More than 3 years",
         ]
 
-        def _time_index():
-            t = ns.get("timeframe")
-            if t in timeframe_options:
-                return timeframe_options.index(t)
-            return 1
+def _time_index():
+    ns_local = st.session_state.get("next_step", {})
+    t = ns_local.get("timeframe")
+    if t in timeframe_options:
+        return timeframe_options.index(t)
+    return 1
 
         with st.form("next_step_form", clear_on_submit=False):
             primary_goal = st.selectbox(
