@@ -1163,7 +1163,7 @@ def page_main() -> None:
                     goal["saved"] += float(add_amount)
                     st.success("Goal updated.")
 
-    # --- Bottom nav ---
+        # --- Bottom nav ---
     st.markdown("")
     st.markdown("---")
     nav1, nav2, nav3 = st.columns(3)
@@ -1181,17 +1181,6 @@ def page_main() -> None:
             ss.main_tab = "next"
             st.rerun()
 
-    col_left, col_right = st.columns(2)
-    with col_left:
-        if st.button("Back to country & profile", type="secondary"):
-            ss.screen = "country_profile"
-            st.rerun()
-    with col_right:
-        if st.button("Log out", type="secondary"):
-            sign_out()
-            ss.user = None
-            ss.screen = "landing"
-            st.rerun()
 
 
 # ---------- MAIN ROUTER ----------
