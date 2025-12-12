@@ -1,6 +1,8 @@
 import streamlit as st
 from datetime import date
 
+from profile import render_profile_page  # (still here if you want to use later)
+
 from logic import (
     calculate_cashflow,
     calculate_net_worth,
@@ -444,6 +446,7 @@ def page_signup() -> None:
                 "email": email,
                 "name": name or email.split("@")[0],
             }
+            # After sign-up, still go via basic profile / country page
             st.session_state.screen = "country_profile"
             st.rerun()
 
@@ -476,7 +479,9 @@ def page_login() -> None:
                 return
 
             st.session_state.user = user_or_error
-            st.session_state.screen = "country_profile"
+            # 🔹 After login, go straight to main app (no profile/country screen)
+            st.session_state.screen = "main"
+            st.session_state.main_tab = "home"
             st.rerun()
 
         st.markdown("")
