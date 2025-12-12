@@ -299,4 +299,62 @@ def render_next_step_tab(currency: str) -> None:
         if emergency_goal:
             st.markdown("#### Emergency fund")
 
-            target = emergency_goal.get("t_
+            target = emergency_goal.get("target", 0.0) or 0.0
+            saved = emergency_goal.get("saved", 0.0) or 0.0
+            if target > 0:
+                pct = int(min(100, max(0, saved / target * 100)))
+                caption_text = (
+                    f"{currency}{saved:,.0f} / {currency}{target:,.0f} "
+                    f"({pct}% complete)"
+                )
+            else:
+                pct = 0
+                caption_text = f"{currency}{saved:,.0f} saved so far"
+
+            st.caption(caption_text)
+            st.progress(pct)
+
+            add_em = st.number_input(
+                f"Add amount to Emergency fund ({currency})",
+                min_value=0.0,
+                step=100.0,
+                key="goal_add_emergency",
+            )
+            if st.button("Add to Emergency fund", key="goal_btn_emergency"):
+                emergency_goal["saved"] += float(add_em)
+                st.success("Emergency fund updated.")
+
+            st.markdown("---")
+
+        st.markdown("#### Other goals")
+
+        for idx, goal in enumerate(ss.goal_plans):
+            if emergency_goal is not None and goal is emergency_goal:
+                continue  # already shown
+
+            target = goal.get("target", 0.0) or 0.0
+            saved = goal.get("saved", 0.0) or 0.0
+            if target > 0:
+                pct = int(min(100, max(0, saved / target * 100)))
+            else:
+                pct = 0
+
+            st.caption(
+                f"**{goal['name']}** — {currency}{saved:,.0f}"
+                + (
+                    f" / {currency}{target:,.0f} ({pct}% complete)"
+                    if target > 0
+                    else ""
+                )
+            )
+            st.progress(pct)
+
+            add_amount = st.number_input(
+                f"Add amount to '{goal['name']}' ({currency})",
+                min_value=0.0,
+                step=100.0,
+                key=f"goal_add_{idx}",
+            )
+            if st.button("Add", key=f"goal_btn_{idx}"):
+                goal["saved"] += float(add_amount)
+                st.success("Goal updated.")

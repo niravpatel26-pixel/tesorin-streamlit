@@ -20,7 +20,7 @@ from supabase_client import (
 
 from wealthflow import render_wealthflow_tab
 from nextstep import render_next_step_tab
-from navigation import render_app_header_and_nav
+from navigation import render_top_navbar
 
 # ---------- PAGE CONFIG ----------
 
@@ -349,15 +349,6 @@ def init_state() -> None:
     if "main_tab" not in ss:
         ss.main_tab = "home"
 
-    if "wallets" not in ss:
-        ss.wallets = [
-            {
-                "id": "main",
-                "name": "Household wallet",
-                "transactions": [],
-            }
-        ]
-
     if "wealthflow_view" not in ss:
         ss.wealthflow_view = "overview"
 
@@ -383,6 +374,15 @@ def init_state() -> None:
     if "goal_plans" not in ss:
         ss.goal_plans = []
 
+    if "wallets" not in ss:
+        ss.wallets = [
+            {
+                "id": "main",
+                "name": "Household wallet",
+                "transactions": [],
+            }
+        ]
+
 
 def sync_screen_from_query_params() -> None:
     """Let the URL control which screen is open, so links like ?screen=signup work."""
@@ -391,12 +391,12 @@ def sync_screen_from_query_params() -> None:
     if not raw:
         return
     screen_from_url = raw[0]
-    valid = {"landing", "signup", "login", "profile", "country_profile", "main"}
+    valid = {"landing", "signup", "login", "country_profile", "main"}
     if screen_from_url in valid:
         st.session_state.screen = screen_from_url
 
 
-# ---------- SCREENS: PUBLIC (LANDING / AUTH) ----------
+# ---------- SCREENS ----------
 
 def page_landing() -> None:
     spacer_left, main, spacer_right = st.columns([0.5, 2, 0.5])
@@ -425,11 +425,11 @@ def page_landing() -> None:
         with col1:
             if st.button("Sign up", use_container_width=True):
                 st.session_state.screen = "signup"
-                st.rerun()
+                st.experimental_rerun()
         with col2:
             if st.button("Log in", use_container_width=True):
                 st.session_state.screen = "login"
-                st.rerun()
+                st.experimental_rerun()
 
 
 def page_signup() -> None:
@@ -461,13 +461,13 @@ def page_signup() -> None:
                 "email": email,
                 "name": name or email.split("@")[0],
             }
-            st.session_state.screen = "profile"
-            st.rerun()
+            st.session_state.screen = "country_profile"
+            st.experimental_rerun()
 
         st.markdown("")
         if st.button("Back to start", type="secondary"):
             st.session_state.screen = "landing"
-            st.rerun()
+            st.experimental_rerun()
 
 
 def page_login() -> None:
@@ -491,22 +491,20 @@ def page_login() -> None:
                 return
 
             st.session_state.user = user_or_error
-            st.session_state.screen = "profile"
-            st.rerun()
+            st.session_state.screen = "country_profile"
+            st.experimental_rerun()
 
         st.markdown("")
         if st.button("Back to start", type="secondary"):
             st.session_state.screen = "landing"
-            st.rerun()
+            st.experimental_rerun()
 
 
-# ---------- PROFILE / COUNTRY SETTINGS SCREEN ----------
-
-def page_profile() -> None:
+def page_country_profile() -> None:
     ss = st.session_state
     profile = ss.profile
 
-    st.markdown("### Profile & basic settings")
+    st.markdown("### 1. Country & basic profile")
 
     if ss.user:
         st.caption(f"Signed in as **{ss.user.get('name', ss.user['email'])}**")
@@ -516,73 +514,30 @@ def page_profile() -> None:
         ["🇮🇳 India", "🇨🇦 Canada"],
         index=0 if profile["country"] == "IN" else 1,
     )
+
     country = "IN" if "India" in country_display else "CA"
 
     age = st.slider("Age", min_value=18, max_value=60, value=profile["age"])
 
-    income = st.number_input(
-        "Monthly income",
-        min_value=0.0,
-        step=1000.0,
-        value=float(profile["income"]),
-    )
-    expenses = st.number_input(
-        "Monthly expenses",
-        min_value=0.0,
-        step=1000.0,
-        value=float(profile["expenses"]),
-    )
-    savings = st.number_input(
-        "Current savings",
-        min_value=0.0,
-        step=1000.0,
-        value=float(profile["savings"]),
-    )
-    debt = st.number_input(
-        "Current debt",
-        min_value=0.0,
-        step=1000.0,
-        value=float(profile["debt"]),
-    )
-
-    high_interest_debt = st.checkbox(
-        "My main debt is high-interest (credit cards, >12–15%)",
-        value=bool(profile["high_interest_debt"]),
-    )
-
-    if st.button("Save and go to planner", type="primary"):
-        ss.profile.update(
-            {
-                "country": country,
-                "age": age,
-                "income": income,
-                "expenses": expenses,
-                "savings": savings,
-                "debt": debt,
-                "high_interest_debt": high_interest_debt,
-            }
-        )
-        if is_configured():
-            save_profile(ss.profile)
+    if st.button("Continue to your planner", type="primary"):
+        ss.profile["country"] = country
+        ss.profile["age"] = age
         ss.screen = "main"
         ss.main_tab = "home"
-        st.rerun()
+        st.experimental_rerun()
 
-    st.markdown("")
     if st.button("Log out", type="secondary"):
         sign_out()
         ss.user = None
         ss.screen = "landing"
-        st.rerun()
+        st.experimental_rerun()
 
 
-# ---------- MAIN APP SHELL (HOME / WEALTHFLOW / NEXT) ----------
+# ---------- HOME TAB (inside main) ----------
 
-def render_home_tab() -> None:
+def render_home_tab(currency: str) -> None:
     ss = st.session_state
     profile = ss.profile
-    country = profile["country"]
-    currency = get_currency(country)
 
     income = float(profile["income"])
     expenses = float(profile["expenses"])
@@ -590,6 +545,8 @@ def render_home_tab() -> None:
     debt = float(profile["debt"])
 
     cashflow = calculate_cashflow(income, expenses)
+    savings_rate = calculate_savings_rate(income, cashflow)
+    low_target, high_target = savings_rate_target(profile["country"], income)
     e_target = emergency_fund_target(expenses, debt)
 
     # Prefer an explicit "Emergency fund" goal if one exists
@@ -616,7 +573,7 @@ def render_home_tab() -> None:
     em_percent = em_ratio * 100
     cashflow_display = cashflow if cashflow > 0 else 0.0
 
-    # Goals snapshot HTML
+    # Goals snapshot
     goals_html = ""
     if ss.goal_plans:
         rows = ""
@@ -646,7 +603,7 @@ def render_home_tab() -> None:
         goals_html = (
             '<div class="tesorin-home-goals-section">'
             '  <div class="tesorin-home-title" style="margin-bottom:0.25rem;">'
-            "    Goals snapshot"
+            '    Goals snapshot'
             "  </div>"
             f"{rows}"
             "</div>"
@@ -696,21 +653,36 @@ def page_main() -> None:
     country = profile["country"]
     currency = get_currency(country)
 
-    # Header + navigation (top-right)
-    render_app_header_and_nav()
+    # ---------- TOP APP BAR ----------
+    st.markdown(
+        """
+        <div class="tesorin-appbar">
+          <div class="tesorin-appbar-left">
+            <div class="tesorin-app-icon">T</div>
+            <div>
+              <div class="tesorin-app-title">Tesorin</div>
+              <div class="tesorin-app-subtitle">Wealthflow planner</div>
+            </div>
+          </div>
+          <div class="tesorin-app-subtitle">Logged in</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    # Top-right navigation dropdown
+    render_top_navbar(sign_out)
 
     tab = ss.main_tab
 
     if tab == "home":
-        render_home_tab()
+        render_home_tab(currency)
     elif tab == "wealthflow":
         render_wealthflow_tab(currency)
     elif tab == "next":
         render_next_step_tab(currency)
-    else:
-        render_home_tab()
 
-    # --- Bottom tab nav ---
+    # bottom nav
     st.markdown("")
     st.markdown("---")
     nav1, nav2, nav3 = st.columns(3)
@@ -718,15 +690,15 @@ def page_main() -> None:
     with nav1:
         if st.button("💸 Wealthflow", use_container_width=True):
             ss.main_tab = "wealthflow"
-            st.rerun()
+            st.experimental_rerun()
     with nav2:
         if st.button("🏠 Home", use_container_width=True):
             ss.main_tab = "home"
-            st.rerun()
+            st.experimental_rerun()
     with nav3:
         if st.button("➡ Next step", use_container_width=True):
             ss.main_tab = "next"
-            st.rerun()
+            st.experimental_rerun()
 
 
 # ---------- MAIN ROUTER ----------
@@ -742,8 +714,8 @@ def main() -> None:
         page_signup()
     elif screen == "login":
         page_login()
-    elif screen in ("profile", "country_profile"):
-        page_profile()
+    elif screen == "country_profile":
+        page_country_profile()
     elif screen == "main":
         page_main()
     else:

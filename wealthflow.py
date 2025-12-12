@@ -1,15 +1,15 @@
-import streamlit as st
 from datetime import date
+import streamlit as st
 
 
-def get_wallet_by_id(wallets, wallet_id):
+def _get_wallet_by_id(wallets, wallet_id):
     for w in wallets:
         if w["id"] == wallet_id:
             return w
     return None
 
 
-def compute_wallet_stats(wallet, start_date, end_date):
+def _compute_wallet_stats(wallet, start_date, end_date):
     txns = [
         t
         for t in wallet["transactions"]
@@ -29,12 +29,11 @@ def compute_wallet_stats(wallet, start_date, end_date):
 
 
 def render_wealthflow_tab(currency: str) -> None:
-    """Render the Wealthflow tab (wallets & transactions)."""
+    """Wallets & transactions view."""
     ss = st.session_state
 
     st.subheader("Wealthflow · wallets & transactions")
 
-    # Period picker
     period_value = st.date_input("Period", value=ss.wealthflow_period)
     if isinstance(period_value, (list, tuple)) and len(period_value) == 2:
         start_date, end_date = period_value
@@ -43,15 +42,15 @@ def render_wealthflow_tab(currency: str) -> None:
     ss.wealthflow_period = (start_date, end_date)
 
     wallets = ss.wallets
-    wallet = get_wallet_by_id(wallets, ss.selected_wallet_id) or wallets[0]
-    stats = compute_wallet_stats(wallet, start_date, end_date)
+    wallet = _get_wallet_by_id(wallets, ss.selected_wallet_id) or wallets[0]
+    stats = _compute_wallet_stats(wallet, start_date, end_date)
 
     if ss.wealthflow_view == "overview":
         col_wallet, col_buttons = st.columns([2, 1])
         with col_wallet:
             balance_color = "#16a34a" if stats["balance"] >= 0 else "#ef4444"
             wallet_html = f"""
-            <div class="tesorin-card tesorin-wallet-card">
+            <div class="tesorin-wallet-card">
               <div class="tesorin-wallet-name">{wallet['name']}</div>
               <div class="tesorin-wallet-balance" style="color:{balance_color};">
                 {currency}{stats['balance']:,.2f}
@@ -65,7 +64,7 @@ def render_wealthflow_tab(currency: str) -> None:
         with col_buttons:
             if st.button("Open wallet", use_container_width=True):
                 ss.wealthflow_view = "wallet"
-                st.rerun()
+                st.experimental_rerun()
 
         st.markdown("")
         c1, c2, c3, c4 = st.columns(4)
@@ -86,7 +85,7 @@ def render_wealthflow_tab(currency: str) -> None:
     else:
         if st.button("← Back to wallets", use_container_width=True):
             ss.wealthflow_view = "overview"
-            st.rerun()
+            st.experimental_rerun()
 
         st.markdown(f"#### {wallet['name']} · transactions")
 
@@ -111,7 +110,7 @@ def render_wealthflow_tab(currency: str) -> None:
                 }
             )
             st.success("Transaction added.")
-            stats = compute_wallet_stats(wallet, start_date, end_date)
+            stats = _compute_wallet_stats(wallet, start_date, end_date)
 
         st.markdown("##### Transactions in this period")
         if stats["transactions"]:

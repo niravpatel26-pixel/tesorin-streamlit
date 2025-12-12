@@ -1,42 +1,22 @@
 import streamlit as st
 
-from supabase_client import sign_out
 
-
-def render_app_header_and_nav(subtitle: str = "Wealthflow planner") -> None:
-    """Top app bar with app name and a small navigation dropdown on the right."""
+def render_top_navbar(sign_out_callback) -> None:
+    """Top-right Navigation dropdown with Profile + Logout."""
     ss = st.session_state
 
-    # Main header bar
-    st.markdown(
-        f"""
-        <div class="tesorin-appbar">
-          <div class="tesorin-appbar-left">
-            <div class="tesorin-app-icon">T</div>
-            <div>
-              <div class="tesorin-app-title">Tesorin</div>
-              <div class="tesorin-app-subtitle">{subtitle}</div>
-            </div>
-          </div>
-          <div class="tesorin-app-subtitle">
-            {ss.user.get("name", ss.user["email"]) if ss.get("user") else "Logged out"}
-          </div>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
-
-    # Align the dropdown to the top-right using columns
-    top_left, top_right = st.columns([5, 1])
-    with top_right:
+    # Empty column on the left so dropdown hugs right edge visually
+    _, right_col = st.columns([5, 1])
+    with right_col:
         with st.expander("Navigation ▾", expanded=False):
-            if st.button("Profile & basics", use_container_width=True, key="nav_profile"):
-                ss.screen = "profile"
+            if st.button("Profile", use_container_width=True, key="nav_profile"):
+                ss.screen = "country_profile"
                 ss.main_tab = "home"
-                st.rerun()
+                st.experimental_rerun()
 
             if st.button("Log out", use_container_width=True, key="nav_logout"):
-                sign_out()
+                # Call back into app's sign_out so auth state is cleared there
+                sign_out_callback()
                 ss.user = None
                 ss.screen = "landing"
-                st.rerun()
+                st.experimental_rerun()
