@@ -1,16 +1,24 @@
 import streamlit as st
+from logic import (
+    calculate_cashflow,
+    emergency_fund_target,
+)
 
-from logic import calculate_cashflow, emergency_fund_target
+
+def get_currency(country_code: str) -> str:
+    if country_code == "IN":
+        return "₹"
+    return "$"
 
 
-def render_next_step_tab(currency: str) -> None:
-    """Render the Next step tab (guided goal setup and tracking)."""
+def render_next_step_tab() -> None:
     ss = st.session_state
     profile = ss.profile
+    country = profile["country"]
+    currency = get_currency(country)
 
     st.subheader("Next step · shape your first plan")
 
-    # Always pull the latest next_step dict from session_state
     ns = ss.get("next_step", {})
     ss.next_step = ns
 
@@ -38,7 +46,6 @@ def render_next_step_tab(currency: str) -> None:
 
     e_target_for_default = emergency_fund_target(expenses, debt)
 
-    # -------- options + index helpers --------
     primary_goal_options = [
         "Build or top up my emergency fund",
         "Clean up high-interest debt",
@@ -48,7 +55,6 @@ def render_next_step_tab(currency: str) -> None:
     ]
 
     def _goal_index() -> int:
-        """Default index for primary-goal selectbox."""
         ns_local = st.session_state.get("next_step", {})
         g = ns_local.get("primary_goal")
         if g in primary_goal_options:
@@ -63,14 +69,12 @@ def render_next_step_tab(currency: str) -> None:
     ]
 
     def _time_index() -> int:
-        """Default index for timeframe selectbox."""
         ns_local = st.session_state.get("next_step", {})
         t = ns_local.get("timeframe")
         if t in timeframe_options:
             return timeframe_options.index(t)
         return 1
 
-    # -------- questions form --------
     with st.form("next_step_form", clear_on_submit=False):
         primary_goal = st.selectbox(
             "What feels like your top priority right now?",
@@ -155,7 +159,6 @@ def render_next_step_tab(currency: str) -> None:
         ss.next_step = ns
         st.success("Saved. Scroll down for a simple next-step plan.")
 
-    # -------- suggested plan + create tracked goal --------
     if ns.get("primary_goal"):
         st.markdown("### Your simple next-step plan")
 
@@ -282,7 +285,6 @@ def render_next_step_tab(currency: str) -> None:
                     ss.profile["goals"].append(name)
                 st.success(f"Added new tracked goal: {name}")
 
-    # -------- Track progress section (Emergency + other goals) --------
     if ss.goal_plans:
         st.markdown("### Track progress on your goals")
 
@@ -309,7 +311,7 @@ def render_next_step_tab(currency: str) -> None:
                 )
             else:
                 pct = 0
-                caption_text = f"{currency}{saved:,.0f} saved so far"
+            caption_text = f"{currency}{saved:,.0f} saved so far"
 
             st.caption(caption_text)
             st.progress(pct)
@@ -330,7 +332,7 @@ def render_next_step_tab(currency: str) -> None:
 
         for idx, goal in enumerate(ss.goal_plans):
             if emergency_goal is not None and goal is emergency_goal:
-                continue  # already shown
+                continue
 
             target = goal.get("target", 0.0) or 0.0
             saved = goal.get("saved", 0.0) or 0.0

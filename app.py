@@ -315,17 +315,16 @@ CUSTOM_CSS = """
 """
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
+
 # ---------- SMALL HELPERS ----------
 
 def get_currency(country_code: str) -> str:
-    """Return currency symbol for a given country code."""
     if country_code == "IN":
         return "₹"
     return "$"
 
 
 def init_state() -> None:
-    """Initialise all keys in session_state that we use."""
     ss = st.session_state
 
     if "screen" not in ss:
@@ -348,6 +347,15 @@ def init_state() -> None:
 
     if "main_tab" not in ss:
         ss.main_tab = "home"
+
+    if "wallets" not in ss:
+        ss.wallets = [
+            {
+                "id": "main",
+                "name": "Household wallet",
+                "transactions": [],
+            }
+        ]
 
     if "wealthflow_view" not in ss:
         ss.wealthflow_view = "overview"
@@ -374,18 +382,8 @@ def init_state() -> None:
     if "goal_plans" not in ss:
         ss.goal_plans = []
 
-    if "wallets" not in ss:
-        ss.wallets = [
-            {
-                "id": "main",
-                "name": "Household wallet",
-                "transactions": [],
-            }
-        ]
-
 
 def sync_screen_from_query_params() -> None:
-    """Let the URL control which screen is open, so links like ?screen=signup work."""
     params = st.experimental_get_query_params()
     raw = params.get("screen")
     if not raw:
@@ -425,11 +423,11 @@ def page_landing() -> None:
         with col1:
             if st.button("Sign up", use_container_width=True):
                 st.session_state.screen = "signup"
-                st.experimental_rerun()
+                st.rerun()
         with col2:
             if st.button("Log in", use_container_width=True):
                 st.session_state.screen = "login"
-                st.experimental_rerun()
+                st.rerun()
 
 
 def page_signup() -> None:
@@ -462,12 +460,12 @@ def page_signup() -> None:
                 "name": name or email.split("@")[0],
             }
             st.session_state.screen = "country_profile"
-            st.experimental_rerun()
+            st.rerun()
 
         st.markdown("")
         if st.button("Back to start", type="secondary"):
             st.session_state.screen = "landing"
-            st.experimental_rerun()
+            st.rerun()
 
 
 def page_login() -> None:
@@ -492,12 +490,12 @@ def page_login() -> None:
 
             st.session_state.user = user_or_error
             st.session_state.screen = "country_profile"
-            st.experimental_rerun()
+            st.rerun()
 
         st.markdown("")
         if st.button("Back to start", type="secondary"):
             st.session_state.screen = "landing"
-            st.experimental_rerun()
+            st.rerun()
 
 
 def page_country_profile() -> None:
@@ -524,20 +522,20 @@ def page_country_profile() -> None:
         ss.profile["age"] = age
         ss.screen = "main"
         ss.main_tab = "home"
-        st.experimental_rerun()
+        st.rerun()
 
     if st.button("Log out", type="secondary"):
         sign_out()
         ss.user = None
         ss.screen = "landing"
-        st.experimental_rerun()
+        st.rerun()
 
 
-# ---------- HOME TAB (inside main) ----------
-
-def render_home_tab(currency: str) -> None:
+def render_home_tab() -> None:
     ss = st.session_state
     profile = ss.profile
+    country = profile["country"]
+    currency = get_currency(country)
 
     income = float(profile["income"])
     expenses = float(profile["expenses"])
@@ -546,10 +544,9 @@ def render_home_tab(currency: str) -> None:
 
     cashflow = calculate_cashflow(income, expenses)
     savings_rate = calculate_savings_rate(income, cashflow)
-    low_target, high_target = savings_rate_target(profile["country"], income)
+    low_target, high_target = savings_rate_target(country, income)
     e_target = emergency_fund_target(expenses, debt)
 
-    # Prefer an explicit "Emergency fund" goal if one exists
     emergency_goal = None
     for g in ss.goal_plans:
         name = g.get("name", "").lower()
@@ -573,7 +570,6 @@ def render_home_tab(currency: str) -> None:
     em_percent = em_ratio * 100
     cashflow_display = cashflow if cashflow > 0 else 0.0
 
-    # Goals snapshot
     goals_html = ""
     if ss.goal_plans:
         rows = ""
@@ -647,13 +643,11 @@ def render_home_tab(currency: str) -> None:
     st.markdown(home_html, unsafe_allow_html=True)
 
 
+# ---------- MAIN APP SHELL ----------
+
 def page_main() -> None:
     ss = st.session_state
-    profile = ss.profile
-    country = profile["country"]
-    currency = get_currency(country)
 
-    # ---------- TOP APP BAR ----------
     st.markdown(
         """
         <div class="tesorin-appbar">
@@ -670,19 +664,18 @@ def page_main() -> None:
         unsafe_allow_html=True,
     )
 
-    # Top-right navigation dropdown
-    render_top_navbar(sign_out)
+    # top-right dropdown
+    render_top_navbar()
 
     tab = ss.main_tab
 
     if tab == "home":
-        render_home_tab(currency)
+        render_home_tab()
     elif tab == "wealthflow":
-        render_wealthflow_tab(currency)
+        render_wealthflow_tab()
     elif tab == "next":
-        render_next_step_tab(currency)
+        render_next_step_tab()
 
-    # bottom nav
     st.markdown("")
     st.markdown("---")
     nav1, nav2, nav3 = st.columns(3)
@@ -690,15 +683,15 @@ def page_main() -> None:
     with nav1:
         if st.button("💸 Wealthflow", use_container_width=True):
             ss.main_tab = "wealthflow"
-            st.experimental_rerun()
+            st.rerun()
     with nav2:
         if st.button("🏠 Home", use_container_width=True):
             ss.main_tab = "home"
-            st.experimental_rerun()
+            st.rerun()
     with nav3:
         if st.button("➡ Next step", use_container_width=True):
             ss.main_tab = "next"
-            st.experimental_rerun()
+            st.rerun()
 
 
 # ---------- MAIN ROUTER ----------
