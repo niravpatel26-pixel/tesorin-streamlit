@@ -22,6 +22,7 @@ from wealthflow import render_wealthflow_tab
 from nextstep import render_next_step_tab
 from navigation import render_top_navbar
 
+
 # ---------- PAGE CONFIG ----------
 
 st.set_page_config(
@@ -39,6 +40,7 @@ CUSTOM_CSS = """
         background: radial-gradient(circle at 0% 0%, #dbeafe 0, #f5f7fb 40%, #e5e7eb 100%);
         color: #0f172a;
         font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 0.95rem;
     }
 
     .block-container {
@@ -48,7 +50,44 @@ CUSTOM_CSS = """
         padding-bottom: 3rem;
     }
 
-    /* Top wordmark on auth pages */
+    /* Brand header: logo + wordmark + tagline (all pages) */
+    .tesorin-brand-header {
+        display: flex;
+        align-items: center;
+        gap: 0.7rem;
+        margin-top: 0.4rem;
+        margin-bottom: 1.6rem;
+    }
+
+    .tesorin-brand-logo {
+        width: 40px;
+        height: 40px;
+        border-radius: 16px;
+        background: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 18px 60px -26px rgba(15, 23, 42, 0.55);
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #020617;
+    }
+
+    .tesorin-brand-name {
+        font-family: "Cormorant Garamond", "Times New Roman", serif;
+        font-size: 1.15rem;
+        letter-spacing: 0.32em;
+        text-transform: uppercase;
+        color: #020617;
+    }
+
+    .tesorin-brand-tagline {
+        font-size: 0.9rem;
+        color: #6b7280;
+        margin-top: 0.05rem;
+    }
+
+    /* Old wordmark classes kept just in case something uses them */
     .tesorin-logo-word {
         font-weight: 600;
         letter-spacing: 0.12em;
@@ -73,45 +112,6 @@ CUSTOM_CSS = """
           0 26px 80px -45px rgba(15, 23, 42, 0.95),
           0 0 0 1px rgba(148, 163, 184, 0.4);
         border: 1px solid rgba(148, 163, 184, 0.4);
-    }
-
-    .tesorin-dark-heading {
-        font-size: 1.05rem;
-        font-weight: 600;
-        margin-bottom: 0.6rem;
-    }
-
-    /* Pills / chips in card header */
-    .tesorin-chip-row {
-        display: flex;
-        justify-content: space-between;
-        gap: 0.75rem;
-        margin-bottom: 0.9rem;
-        font-size: 0.75rem;
-    }
-
-    .tesorin-chip {
-        padding: 0.25rem 0.8rem;
-        border-radius: 999px;
-        border: 1px solid rgba(148, 163, 184, 0.6);
-        background: rgba(15, 23, 42, 0.9);
-        color: #e5e7eb;
-        display: inline-flex;
-        align-items: center;
-        gap: 0.4rem;
-        white-space: nowrap;
-    }
-
-    .tesorin-chip-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 999px;
-        background: #22c55e;
-    }
-
-    .tesorin-chip-muted {
-        background: rgba(15, 23, 42, 0.7);
-        color: #cbd5f5;
     }
 
     /* In-app top bar for main planner */
@@ -164,6 +164,7 @@ CUSTOM_CSS = """
         color: #f9fafb;
     }
 
+    .tesorin-home-pill,
     .tesorin-home-pill-main {
         display: inline-flex;
         align-items: center;
@@ -231,7 +232,7 @@ CUSTOM_CSS = """
 
     .tesorin-home-bullets {
         margin-top: 1.0rem;
-        font-size: 0.78rem;
+        font-size: 0.8rem;
         color: #e5e7eb;
         padding-left: 1.1rem;
     }
@@ -338,6 +339,7 @@ CUSTOM_CSS = """
 
 st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
+
 # ---------- SMALL HELPERS ----------
 
 def get_currency(country_code: str) -> str:
@@ -415,33 +417,36 @@ def sync_screen_from_query_params() -> None:
     if screen_from_url in valid:
         st.session_state.screen = screen_from_url
 
+
+# ---------- UI HELPERS ----------
+
+def render_brand_header() -> None:
+    """Brand logo + TESORIN wordmark shown on every page."""
+    st.markdown(
+        """
+        <div class="tesorin-brand-header">
+          <div class="tesorin-brand-logo">t</div>
+          <div>
+            <div class="tesorin-brand-name">TESORIN</div>
+            <div class="tesorin-brand-tagline">Start small. Plan big.</div>
+          </div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 # ---------- SCREENS ----------
 
 def page_landing() -> None:
     left, main, right = st.columns([0.6, 2, 0.6])
 
     with main:
-        st.markdown(
-            """
-            <div class="tesorin-logo-word">Tesorin</div>
-            <div class="tesorin-tagline">Start small. Plan big.</div>
-            """,
-            unsafe_allow_html=True,
-        )
+        render_brand_header()
 
         st.markdown(
             """
             <div class="tesorin-dark-card">
-              <div class="tesorin-chip-row">
-                <div class="tesorin-chip">
-                  <span class="tesorin-chip-dot"></span>
-                  Preview · TESORIN plan
-                </div>
-                <div class="tesorin-chip tesorin-chip-muted">
-                  Beginner mode · On
-                </div>
-              </div>
-
               <div class="tesorin-auth-title">
                 Build your first serious money plan.
               </div>
@@ -454,12 +459,12 @@ def page_landing() -> None:
             unsafe_allow_html=True,
         )
 
-        st.markdown("")
+        st.markdown("")  # small spacer
 
         c1, c2 = st.columns(2)
         with c1:
             st.markdown('<div class="tesorin-primary-btn">', unsafe_allow_html=True)
-            if st.button("Create a free plan", use_container_width=True):
+            if st.button("Sign up", use_container_width=True):
                 st.session_state.screen = "signup"
                 st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
@@ -475,38 +480,10 @@ def page_landing() -> None:
 
 
 def page_signup() -> None:
-    ss = st.session_state
-    left, main, right = st.columns([0.6, 2, 0.6])
-
+    spacer_left, main, spacer_right = st.columns([1, 2, 1])
     with main:
-        st.markdown(
-            """
-            <div class="tesorin-logo-word">Tesorin</div>
-            <div class="tesorin-tagline">Start small. Plan big.</div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        st.markdown('<div class="tesorin-dark-card">', unsafe_allow_html=True)
-
-        st.markdown(
-            """
-            <div class="tesorin-chip-row">
-              <div class="tesorin-chip">
-                <span class="tesorin-chip-dot"></span>
-                Create account
-              </div>
-              <div class="tesorin-chip tesorin-chip-muted">
-                Beginner mode · On
-              </div>
-            </div>
-            <div class="tesorin-auth-title">Create your Tesorin account.</div>
-            <div class="tesorin-auth-subtitle">
-              We’ll start with just a few basics. You can change everything later.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        render_brand_header()
+        st.markdown("### Create your Tesorin account")
 
         with st.form("signup_form", clear_on_submit=False):
             name = st.text_input("Preferred name (optional)")
@@ -518,61 +495,34 @@ def page_signup() -> None:
         if submitted:
             if not email or not password:
                 st.error("Email and password are required.")
-            elif not agree:
+                return
+            if not agree:
                 st.error("Please agree to the terms to continue.")
-            else:
-                ok, err = sign_up(email, password, name=name or None)
-                if not ok:
-                    st.error(err or "Could not sign up right now.")
-                else:
-                    ss.user = {
-                        "email": email,
-                        "name": name or email.split("@")[0],
-                    }
-                    ss.screen = "country_profile"
-                    st.rerun()
+                return
 
-        st.markdown("</div>", unsafe_allow_html=True)
+            ok, err = sign_up(email, password, name=name or None)
+            if not ok:
+                st.error(err or "Could not sign up right now.")
+                return
+
+            st.session_state.user = {
+                "email": email,
+                "name": name or email.split("@")[0],
+            }
+            st.session_state.screen = "country_profile"
+            st.rerun()
 
         st.markdown("")
         if st.button("Back to start"):
-            ss.screen = "landing"
+            st.session_state.screen = "landing"
             st.rerun()
 
 
 def page_login() -> None:
-    ss = st.session_state
-    left, main, right = st.columns([0.6, 2, 0.6])
-
+    spacer_left, main, spacer_right = st.columns([1, 2, 1])
     with main:
-        st.markdown(
-            """
-            <div class="tesorin-logo-word">Tesorin</div>
-            <div class="tesorin-tagline">Start small. Plan big.</div>
-            """,
-            unsafe_allow_html=True,
-        )
-
-        st.markdown('<div class="tesorin-dark-card">', unsafe_allow_html=True)
-
-        st.markdown(
-            """
-            <div class="tesorin-chip-row">
-              <div class="tesorin-chip">
-                <span class="tesorin-chip-dot"></span>
-                Log in to TESORIN
-              </div>
-              <div class="tesorin-chip tesorin-chip-muted">
-                Beginner mode · On
-              </div>
-            </div>
-            <div class="tesorin-auth-title">Welcome back.</div>
-            <div class="tesorin-auth-subtitle">
-              Pick up where you left off — your plan, your buffers, your goals.
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        render_brand_header()
+        st.markdown("### Welcome back")
 
         with st.form("login_form", clear_on_submit=False):
             email = st.text_input("Email")
@@ -582,20 +532,20 @@ def page_login() -> None:
         if submitted:
             if not email or not password:
                 st.error("Email and password are required.")
-            else:
-                ok, user_or_error = sign_in(email, password)
-                if not ok:
-                    st.error(user_or_error or "Login failed.")
-                else:
-                    ss.user = user_or_error
-                    ss.screen = "country_profile"
-                    st.rerun()
+                return
 
-        st.markdown("</div>", unsafe_allow_html=True)
+            ok, user_or_error = sign_in(email, password)
+            if not ok:
+                st.error(user_or_error or "Login failed.")
+                return
+
+            st.session_state.user = user_or_error
+            st.session_state.screen = "country_profile"
+            st.rerun()
 
         st.markdown("")
         if st.button("Back to start"):
-            ss.screen = "landing"
+            st.session_state.screen = "landing"
             st.rerun()
 
 
@@ -603,6 +553,7 @@ def page_country_profile() -> None:
     ss = st.session_state
     profile = ss.profile
 
+    render_brand_header()
     st.markdown("### 1. Country & basic profile")
 
     if ss.user:
@@ -618,14 +569,14 @@ def page_country_profile() -> None:
 
     age = st.slider("Age", min_value=18, max_value=60, value=profile["age"])
 
-    if st.button("Continue to your planner", type="primary"):
+    if st.button("Continue to your planner"):
         ss.profile["country"] = country
         ss.profile["age"] = age
         ss.screen = "main"
         ss.main_tab = "home"
         st.rerun()
 
-    if st.button("Log out", type="secondary"):
+    if st.button("Log out"):
         sign_out()
         ss.user = None
         ss.screen = "landing"
@@ -644,11 +595,10 @@ def render_home_tab() -> None:
     debt = float(profile["debt"])
 
     cashflow = calculate_cashflow(income, expenses)
-    _savings_rate = calculate_savings_rate(income, cashflow)
+    _ = calculate_savings_rate(income, cashflow)
     _low_target, _high_target = savings_rate_target(country, income)
     e_target = emergency_fund_target(expenses, debt)
 
-    # Prefer explicit emergency goal if present
     emergency_goal = None
     for g in ss.goal_plans:
         name = g.get("name", "").lower()
@@ -672,7 +622,6 @@ def render_home_tab() -> None:
     em_percent = em_ratio * 100
     cashflow_display = cashflow if cashflow > 0 else 0.0
 
-    # Goals snapshot
     goals_html = ""
     if ss.goal_plans:
         rows = ""
@@ -710,23 +659,13 @@ def render_home_tab() -> None:
 
     home_html = f"""
     <div class="tesorin-dark-card">
-      <div class="tesorin-chip-row">
-        <div class="tesorin-chip">
-          <span class="tesorin-chip-dot"></span>
-          Preview · TESORIN plan
-        </div>
-        <div class="tesorin-chip tesorin-chip-muted">
-          Beginner mode · On
-        </div>
-      </div>
-
       <div class="tesorin-home-title">Monthly cash flow after expenses</div>
-      <div style="margin-top:0.25rem;">
+      <div>
         <span class="tesorin-home-amount">{currency}{cashflow_display:,.0f}</span>
-        <span class="tesorin-home-pill-main">to work with</span>
+        <span class="tesorin-home-pill">to work with</span>
       </div>
       <div class="tesorin-home-subcopy">
-        TESORIN suggests how much to save, invest, and keep aside so you're not guessing every month.
+        Tesorin suggests how much to save, invest, and keep aside so you’re not guessing every month.
       </div>
 
       <div class="tesorin-home-em-card">
@@ -735,10 +674,11 @@ def render_home_tab() -> None:
           <span class="tesorin-home-em-percent">{em_percent:.0f}% funded</span>
         </div>
         <div class="tesorin-home-em-track">
-          <div class="tesorin-home-em-fill" style="width:{em_percent:.0f}%;"></div>
+          <div class="tesorin-home-em-fill" style="width: {em_percent:.0f}%;"></div>
         </div>
         <div class="tesorin-home-em-copy">
-          Track key goals — safety buffer, debt payoff, and long-term investing — in one calm view.<br/>
+          Track key goals — safety buffer, debt payoff, and long-term investing — in one calm view.
+          <br />
           Current buffer: {currency}{em_saved:,.0f} / {currency}{em_target:,.0f}
         </div>
       </div>
@@ -754,10 +694,13 @@ def render_home_tab() -> None:
     """
     st.markdown(home_html, unsafe_allow_html=True)
 
+
 # ---------- MAIN APP SHELL ----------
 
 def page_main() -> None:
     ss = st.session_state
+
+    render_brand_header()
 
     st.markdown(
         """
@@ -775,7 +718,7 @@ def page_main() -> None:
         unsafe_allow_html=True,
     )
 
-    # top-right dropdown (profile + logout)
+    # top-right dropdown (Profile / Log out)
     render_top_navbar()
 
     tab = ss.main_tab
@@ -787,10 +730,8 @@ def page_main() -> None:
     elif tab == "next":
         render_next_step_tab()
 
-    # bottom nav
     st.markdown("")
     st.markdown("---")
-    st.markdown('<div class="tesorin-bottom-nav">', unsafe_allow_html=True)
     nav1, nav2, nav3 = st.columns(3)
 
     with nav1:
@@ -806,7 +747,6 @@ def page_main() -> None:
             ss.main_tab = "next"
             st.rerun()
 
-    st.markdown("</div>", unsafe_allow_html=True)
 
 # ---------- MAIN ROUTER ----------
 
