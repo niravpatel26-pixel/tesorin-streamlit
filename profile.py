@@ -1,3 +1,4 @@
+# profile.py
 import streamlit as st
 
 
@@ -5,140 +6,195 @@ def render_profile_page(profile: dict, first_time: bool = False):
     """
     Render the profile / KYC page.
 
-    Args:
-        profile: current profile dict from session_state.
-        first_time: if True, button text is 'Save and continue to your planner'
-                    and we tell app.py it's okay to auto-redirect to main.
-
     Returns:
         (updated_profile: dict, completed: bool)
+
+    completed = True  → caller (app.py) should send user back to the main app.
     """
-    # --- safe defaults from existing profile dict ---
-    country = profile.get("country", "IN")
-    age = int(profile.get("age", 25))
-    income = float(profile.get("income", 0.0))
-    expenses = float(profile.get("expenses", 0.0))
-    savings = float(profile.get("savings", 0.0))
-    debt = float(profile.get("debt", 0.0))
-    high_interest_debt = bool(profile.get("high_interest_debt", False))
 
-    goal_focus_default = profile.get("goal_focus", "Getting stable month to month")
-    money_conf_default = profile.get(
-        "money_confidence",
-        "A bit unsure, but working on it",
+    st.markdown("### Your basic profile")
+
+    # ---- Defaults from existing profile ----
+    country_code = profile.get("country", "IN")
+    country_default = "🇮🇳 India" if country_code == "IN" else "🇨🇦 Canada"
+
+    age_default = int(profile.get("age", 25))
+    income_default = float(profile.get("income", 0.0))
+    expenses_default = float(profile.get("expenses", 0.0))
+    savings_default = float(profile.get("savings", 0.0))
+    debt_default = float(profile.get("debt", 0.0))
+    high_interest_default = bool(profile.get("high_interest_debt", False))
+
+    employment_default = profile.get("employment_status", "Full-time employment")
+    household_default = int(profile.get("household_size", 1))
+    dependents_default = int(profile.get("dependents", 0))
+
+    focus_default = profile.get(
+        "primary_focus", "Build or pad my emergency fund"
     )
+    risk_default = int(profile.get("risk_comfort", 3))
+    feeling_default = profile.get("money_feeling", "Mostly stressed")
 
-    country_index = 0 if country == "IN" else 1
-
-    goal_focus_options = [
-        "Getting stable month to month",
-        "Building an emergency buffer",
-        "Cleaning up costly debt",
-        "Starting long-term investing",
-        "Saving for a specific near-term goal",
+    job_options = [
+        "Full-time employment",
+        "Part-time / contract",
+        "Business / self-employed",
+        "Student",
+        "Between jobs",
+        "Other",
     ]
-    if goal_focus_default not in goal_focus_options:
-        goal_focus_default = goal_focus_options[0]
+    if employment_default in job_options:
+        job_index = job_options.index(employment_default)
+    else:
+        job_index = 0
 
-    money_feeling_options = [
-        "Very stressed",
-        "A bit anxious",
+    focus_options = [
+        "Build or pad my emergency fund",
+        "Clean up high-interest debt",
+        "Get started with long-term investing",
+        "Stay on top of monthly cashflow",
+        "Save for a specific purchase",
+    ]
+    if focus_default in focus_options:
+        focus_index = focus_options.index(focus_default)
+    else:
+        focus_index = 0
+
+    feeling_options = [
+        "Mostly stressed",
         "Mostly okay",
-        "Calm and organised",
+        "Mostly confident",
+        "I avoid thinking about it",
     ]
-    if money_conf_default not in money_feeling_options:
-        money_conf_default = money_feeling_options[1]
+    if feeling_default in feeling_options:
+        feeling_index = feeling_options.index(feeling_default)
+    else:
+        feeling_index = 0
 
+    col1, col2 = st.columns(2)
+
+    # ---- Form ----
     with st.form("profile_form", clear_on_submit=False):
-        st.markdown("### Your money basics")
-        st.caption(
-            "This stays private. It just helps Tesorin tune the guidance to your situation."
-        )
-
-        col1, col2 = st.columns(2)
-
         with col1:
             country_display = st.selectbox(
-                "Where do you mainly manage your money?",
+                "Where do you manage your money?",
                 ["🇮🇳 India", "🇨🇦 Canada"],
-                index=country_index,
+                index=0 if "India" in country_default else 1,
             )
 
-            age_val = st.slider("Age", min_value=18, max_value=70, value=age)
-
-            income_val = st.number_input(
-                "Approx. monthly take-home income",
-                min_value=0.0,
-                value=income,
-                step=1000.0,
+            age = st.slider(
+                "Age",
+                min_value=18,
+                max_value=65,
+                value=age_default,
             )
 
-            expenses_val = st.number_input(
-                "Approx. monthly essential expenses",
-                min_value=0.0,
-                value=expenses,
-                step=1000.0,
-                help="Rent, groceries, utilities, EMIs, basic bills, etc.",
+            employment_status = st.selectbox(
+                "Work situation",
+                job_options,
+                index=job_index,
+            )
+
+            household_size = st.number_input(
+                "How many people in your household (including you)?",
+                min_value=1,
+                max_value=10,
+                value=household_default,
+            )
+
+            dependents = st.number_input(
+                "How many people fully/mostly rely on your income?",
+                min_value=0,
+                max_value=10,
+                value=dependents_default,
             )
 
         with col2:
-            savings_val = st.number_input(
-                "Cash savings / buffer right now",
+            monthly_income = st.number_input(
+                "Average monthly income (after tax)",
                 min_value=0.0,
-                value=savings,
                 step=1000.0,
+                value=income_default,
             )
 
-            debt_val = st.number_input(
+            monthly_essentials = st.number_input(
+                "Average monthly essential spending (rent, food, basics)",
+                min_value=0.0,
+                step=500.0,
+                value=expenses_default,
+            )
+
+            savings = st.number_input(
+                "Cash savings right now",
+                min_value=0.0,
+                step=1000.0,
+                value=savings_default,
+            )
+
+            debt = st.number_input(
                 "Total debt (loans, cards, etc.)",
                 min_value=0.0,
-                value=debt,
                 step=1000.0,
+                value=debt_default,
             )
 
-            hi_debt_val = st.checkbox(
-                "I have high-interest debt (credit cards, personal loans, etc.)",
-                value=high_interest_debt,
+            high_interest = st.checkbox(
+                "I have high-interest debt (credit cards, payday loans, etc.)",
+                value=high_interest_default,
             )
 
-            goal_focus = st.selectbox(
-                "Over the next 12 months, I care most about…",
-                goal_focus_options,
-                index=goal_focus_options.index(goal_focus_default),
-            )
+        st.markdown("---")
 
-            money_feeling = st.selectbox(
-                "Right now, money feels…",
-                money_feeling_options,
-                index=money_feeling_options.index(money_conf_default),
-            )
+        primary_focus = st.selectbox(
+            "Right now, what feels most important?",
+            focus_options,
+            index=focus_index,
+        )
 
-        submit_label = (
+        risk_comfort = st.slider(
+            "How comfortable are you with your money moving up and down?",
+            min_value=1,
+            max_value=5,
+            value=risk_default,
+            help="1 = I really dislike seeing any drops. 5 = I'm okay with ups and downs for long-term growth.",
+        )
+
+        money_feeling = st.selectbox(
+            "When you think about money, you mostly feel…",
+            feeling_options,
+            index=feeling_index,
+        )
+
+        button_label = (
             "Save and continue to your planner" if first_time else "Save profile"
         )
-        submitted = st.form_submit_button(submit_label)
+        save_clicked = st.form_submit_button(button_label)
 
-    updated_profile = dict(profile)
+    # If nothing was clicked, stay on this page
+    if not save_clicked:
+        return profile, False
 
-    if submitted:
-        country_val = "IN" if "India" in country_display else "CA"
+    # ---- Build updated profile ----
+    new_country_code = "IN" if "India" in country_display else "CA"
 
-        updated_profile.update(
-            {
-                "country": country_val,
-                "age": int(age_val),
-                "income": float(income_val),
-                "expenses": float(expenses_val),
-                "savings": float(savings_val),
-                "debt": float(debt_val),
-                "high_interest_debt": bool(hi_debt_val),
-                "goal_focus": goal_focus,
-                "money_confidence": money_feeling,
-            }
-        )
+    updated_profile = {
+        **profile,
+        "country": new_country_code,
+        "age": int(age),
+        "income": float(monthly_income),
+        "expenses": float(monthly_essentials),
+        "savings": float(savings),
+        "debt": float(debt),
+        "high_interest_debt": bool(high_interest),
+        "employment_status": employment_status,
+        "household_size": int(household_size),
+        "dependents": int(dependents),
+        "primary_focus": primary_focus,
+        "risk_comfort": int(risk_comfort),
+        "money_feeling": money_feeling,
+    }
 
-        st.success("Profile saved.")
-
-    # Tell caller whether it's okay to auto-redirect to main.
-    completed = bool(submitted and first_time)
-    return updated_profile, completed
+    # IMPORTANT:
+    # Any time the user clicks "Save profile",
+    # treat it as completed so app.py sends them back to the main dashboard.
+    return updated_profile, True
