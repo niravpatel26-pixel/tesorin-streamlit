@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import date
 
-from profile import render_profile_page  # ready for when you wire it in
+from profile import render_profile_page  # <-- now actually used
 
 from logic import (
     calculate_cashflow,
@@ -281,7 +281,6 @@ st.markdown(CUSTOM_CSS, unsafe_allow_html=True)
 
 # ---------- SMALL HELPERS ----------
 
-
 def render_brand_header() -> None:
     """Brand logo + TESORIN wordmark shown on every page."""
     st.markdown(
@@ -325,6 +324,10 @@ def init_state() -> None:
             "debt": 0.0,
             "high_interest_debt": False,
             "goals": [],
+            # profile / KYC extras
+            "has_completed_profile": False,
+            "goal_focus": "Getting stable month to month",
+            "money_confidence": "A bit unsure, but working on it",
         }
 
     if "main_tab" not in ss:
@@ -446,7 +449,7 @@ def page_signup() -> None:
                 "email": email,
                 "name": name or email.split("@")[0],
             }
-            # After sign-up, still go via basic profile / country page
+            # After sign-up, go to KYC/profile page
             st.session_state.screen = "country_profile"
             st.rerun()
 
@@ -479,7 +482,7 @@ def page_login() -> None:
                 return
 
             st.session_state.user = user_or_error
-            # After login, go straight to main app (no profile/country screen)
+            # IMPORTANT: after login, go straight to main (no profile page)
             st.session_state.screen = "main"
             st.session_state.main_tab = "home"
             st.rerun()
@@ -491,37 +494,27 @@ def page_login() -> None:
 
 
 def page_country_profile() -> None:
+    """
+    Profile / KYC page.
+
+    - Shown automatically once after sign-up.
+    - Also opened from Navigation ▾ > Profile.
+    """
     render_brand_header()
 
     ss = st.session_state
     profile = ss.profile
 
-    st.markdown("### 1. Country & basic profile")
+    # First-time mode controls the button label + redirect behaviour
+    first_time = not profile.get("has_completed_profile", False)
 
-    if ss.user:
-        st.caption(f"Signed in as **{ss.user.get('name', ss.user['email'])}**")
+    updated_profile, completed = render_profile_page(profile, first_time=first_time)
+    ss.profile = updated_profile
 
-    country_display = st.selectbox(
-        "Where do you manage your money?",
-        ["🇮🇳 India", "🇨🇦 Canada"],
-        index=0 if profile["country"] == "IN" else 1,
-    )
-
-    country = "IN" if "India" in country_display else "CA"
-
-    age = st.slider("Age", min_value=18, max_value=60, value=profile["age"])
-
-    if st.button("Continue to your planner"):
-        ss.profile["country"] = country
-        ss.profile["age"] = age
+    if completed:
+        ss.profile["has_completed_profile"] = True
         ss.screen = "main"
         ss.main_tab = "home"
-        st.rerun()
-
-    if st.button("Log out"):
-        sign_out()
-        ss.user = None
-        ss.screen = "landing"
         st.rerun()
 
 

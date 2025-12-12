@@ -1,181 +1,144 @@
-# profile.py
 import streamlit as st
 
-from supabase_client import sign_out  # in case you want a logout button here too
 
-
-def _get_currency(country_code: str) -> str:
-    if country_code == "IN":
-        return "₹"
-    return "$"
-
-
-def render_profile_page() -> None:
+def render_profile_page(profile: dict, first_time: bool = False):
     """
-    Collect basic 'who you are' + money snapshot and store it in st.session_state.profile.
-    This page is shown immediately after sign-up / log-in, and can also be reached
-    from the Navigation menu.
+    Render the profile / KYC page.
+
+    Args:
+        profile: current profile dict from session_state.
+        first_time: if True, button text is 'Save and continue to your planner'
+                    and we tell app.py it's okay to auto-redirect to main.
+
+    Returns:
+        (updated_profile: dict, completed: bool)
     """
-    ss = st.session_state
+    # --- safe defaults from existing profile dict ---
+    country = profile.get("country", "IN")
+    age = int(profile.get("age", 25))
+    income = float(profile.get("income", 0.0))
+    expenses = float(profile.get("expenses", 0.0))
+    savings = float(profile.get("savings", 0.0))
+    debt = float(profile.get("debt", 0.0))
+    high_interest_debt = bool(profile.get("high_interest_debt", False))
 
-    # Ensure profile dict exists
-    if "profile" not in ss:
-        ss.profile = {
-            "country": "IN",
-            "age": 25,
-            "employment_status": "Salaried",
-            "dependents": 0,
-            "income": 0.0,
-            "expenses": 0.0,
-            "savings": 0.0,
-            "debt": 0.0,
-            "high_interest_debt": False,
-            "goals": [],
-        }
-
-    profile = ss.profile
-
-    # --- Page heading (matches your theme) ---
-    st.markdown(
-        """
-        <div class="tesorin-logo-word">TESORIN</div>
-        <div class="tesorin-tagline">Start small. Plan big.</div>
-        """,
-        unsafe_allow_html=True,
+    goal_focus_default = profile.get("goal_focus", "Getting stable month to month")
+    money_conf_default = profile.get(
+        "money_confidence",
+        "A bit unsure, but working on it",
     )
 
-    st.markdown(
-        """
-        <div class="tesorin-dark-card">
-          <div class="tesorin-dark-heading">Profile & money snapshot</div>
-          <p class="tesorin-auth-subtitle" style="margin-bottom:0.5rem;">
-            A few basics so Tesorin can suggest realistic buffers and next steps.
-            You can change these anytime.
-          </p>
-        </div>
-        """,
-        unsafe_allow_html=True,
-    )
+    country_index = 0 if country == "IN" else 1
 
-    st.markdown("")  # spacer
+    goal_focus_options = [
+        "Getting stable month to month",
+        "Building an emergency buffer",
+        "Cleaning up costly debt",
+        "Starting long-term investing",
+        "Saving for a specific near-term goal",
+    ]
+    if goal_focus_default not in goal_focus_options:
+        goal_focus_default = goal_focus_options[0]
 
-    # --- Form ---
-    # Country affects currency label
-    current_country = profile.get("country", "IN")
-    current_currency = _get_currency(current_country)
+    money_feeling_options = [
+        "Very stressed",
+        "A bit anxious",
+        "Mostly okay",
+        "Calm and organised",
+    ]
+    if money_conf_default not in money_feeling_options:
+        money_conf_default = money_feeling_options[1]
 
     with st.form("profile_form", clear_on_submit=False):
-        col_left, col_right = st.columns(2)
+        st.markdown("### Your money basics")
+        st.caption(
+            "This stays private. It just helps Tesorin tune the guidance to your situation."
+        )
 
-        # ----- Left: You -----
-        with col_left:
+        col1, col2 = st.columns(2)
+
+        with col1:
             country_display = st.selectbox(
-                "Where do you manage your money?",
+                "Where do you mainly manage your money?",
                 ["🇮🇳 India", "🇨🇦 Canada"],
-                index=0 if current_country == "IN" else 1,
-            )
-            country = "IN" if "India" in country_display else "CA"
-            currency = _get_currency(country)
-
-            age = st.slider(
-                "Age",
-                min_value=18,
-                max_value=70,
-                value=int(profile.get("age", 25)),
+                index=country_index,
             )
 
-            employment_status = st.selectbox(
-                "Which best describes you?",
-                [
-                    "Salaried",
-                    "Self-employed / business",
-                    "Student",
-                    "Homemaker",
-                    "Between jobs",
-                    "Retired",
-                ],
-                index=0,
-            )
+            age_val = st.slider("Age", min_value=18, max_value=70, value=age)
 
-            dependents = st.number_input(
-                "People who financially depend on you",
-                min_value=0,
-                max_value=10,
-                step=1,
-                value=int(profile.get("dependents", 0)),
-            )
-
-        # ----- Right: Money snapshot -----
-        with col_right:
-            income = st.number_input(
-                f"Approx. monthly take-home income ({currency})",
+            income_val = st.number_input(
+                "Approx. monthly take-home income",
                 min_value=0.0,
+                value=income,
                 step=1000.0,
-                value=float(profile.get("income", 0.0)),
             )
 
-            expenses = st.number_input(
-                f"Approx. monthly essential expenses ({currency})",
-                help="Rent, groceries, loans, utilities – the stuff you must pay.",
+            expenses_val = st.number_input(
+                "Approx. monthly essential expenses",
                 min_value=0.0,
+                value=expenses,
                 step=1000.0,
-                value=float(profile.get("expenses", 0.0)),
+                help="Rent, groceries, utilities, EMIs, basic bills, etc.",
             )
 
-            savings = st.number_input(
-                f"Cash savings / buffer right now ({currency})",
-                help="Money in bank / liquid savings that you could use within a few days.",
+        with col2:
+            savings_val = st.number_input(
+                "Cash savings / buffer right now",
                 min_value=0.0,
+                value=savings,
                 step=1000.0,
-                value=float(profile.get("savings", 0.0)),
             )
 
-            debt = st.number_input(
-                f"Total debt that currently worries you ({currency})",
-                help="Include credit cards, personal loans, BNPL etc.",
+            debt_val = st.number_input(
+                "Total debt (loans, cards, etc.)",
                 min_value=0.0,
+                value=debt,
                 step=1000.0,
-                value=float(profile.get("debt", 0.0)),
             )
 
-            high_interest_debt = st.checkbox(
-                "Some of this is high-interest (like credit cards / BNPL)",
-                value=bool(profile.get("high_interest_debt", False)),
+            hi_debt_val = st.checkbox(
+                "I have high-interest debt (credit cards, personal loans, etc.)",
+                value=high_interest_debt,
             )
 
-        st.markdown("")  # small gap
+            goal_focus = st.selectbox(
+                "Over the next 12 months, I care most about…",
+                goal_focus_options,
+                index=goal_focus_options.index(goal_focus_default),
+            )
 
-        col_save, col_skip = st.columns([2, 1])
-        with col_save:
-            save_clicked = st.form_submit_button("Save profile and continue")
-        with col_skip:
-            skip_clicked = st.form_submit_button("Skip for now")
+            money_feeling = st.selectbox(
+                "Right now, money feels…",
+                money_feeling_options,
+                index=money_feeling_options.index(money_conf_default),
+            )
 
-    # --- Handle form actions ---
-    if save_clicked:
-        ss.profile.update(
+        submit_label = (
+            "Save and continue to your planner" if first_time else "Save profile"
+        )
+        submitted = st.form_submit_button(submit_label)
+
+    updated_profile = dict(profile)
+
+    if submitted:
+        country_val = "IN" if "India" in country_display else "CA"
+
+        updated_profile.update(
             {
-                "country": country,
-                "age": int(age),
-                "employment_status": employment_status,
-                "dependents": int(dependents),
-                "income": float(income),
-                "expenses": float(expenses),
-                "savings": float(savings),
-                "debt": float(debt),
-                "high_interest_debt": bool(high_interest_debt),
+                "country": country_val,
+                "age": int(age_val),
+                "income": float(income_val),
+                "expenses": float(expenses_val),
+                "savings": float(savings_val),
+                "debt": float(debt_val),
+                "high_interest_debt": bool(hi_debt_val),
+                "goal_focus": goal_focus,
+                "money_confidence": money_feeling,
             }
         )
-        # Optionally: persist to Supabase here once you're ready
-        # if is_configured():
-        #     save_profile(ss.user, ss.profile)
 
-        ss.screen = "main"
-        ss.main_tab = "home"
-        st.success("Profile saved. Your planner is ready.")
-        st.rerun()
+        st.success("Profile saved.")
 
-    if skip_clicked:
-        ss.screen = "main"
-        ss.main_tab = "home"
-        st.rerun()
+    # Tell caller whether it's okay to auto-redirect to main.
+    completed = bool(submitted and first_time)
+    return updated_profile, completed
