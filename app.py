@@ -802,11 +802,13 @@ def page_main() -> None:
             else:
                 st.caption("No transactions in this period yet.")
 
-        # --- NEXT STEP TAB ---
+    # --- NEXT STEP TAB ---
     elif tab == "next":
         st.subheader("Next step · shape your first plan")
 
-        ns = ss.next_step
+        # Always pull the latest next_step dict from session_state
+        ns = st.session_state.get("next_step", {})
+        st.session_state.next_step = ns
 
         income = float(profile["income"])
         expenses = float(profile["expenses"])
@@ -832,7 +834,7 @@ def page_main() -> None:
 
         e_target_for_default = emergency_fund_target(expenses, debt)
 
-        # --- options + index helpers ---------------------------------
+        # -------- options + index helpers --------
         primary_goal_options = [
             "Build or top up my emergency fund",
             "Clean up high-interest debt",
@@ -842,7 +844,7 @@ def page_main() -> None:
         ]
 
         def _goal_index() -> int:
-            """Pick the right default index for the primary-goal selectbox."""
+            """Default index for primary-goal selectbox."""
             ns_local = st.session_state.get("next_step", {})
             g = ns_local.get("primary_goal")
             if g in primary_goal_options:
@@ -857,14 +859,14 @@ def page_main() -> None:
         ]
 
         def _time_index() -> int:
-            """Pick the right default index for the timeframe selectbox."""
+            """Default index for timeframe selectbox."""
             ns_local = st.session_state.get("next_step", {})
             t = ns_local.get("timeframe")
             if t in timeframe_options:
                 return timeframe_options.index(t)
             return 1
 
-        # --- questions form -------------------------------------------
+        # -------- questions form --------
         with st.form("next_step_form", clear_on_submit=False):
             primary_goal = st.selectbox(
                 "What feels like your top priority right now?",
@@ -946,10 +948,10 @@ def page_main() -> None:
                     "target_amount": float(target_amount),
                 }
             )
-            ss.next_step = ns
+            st.session_state.next_step = ns
             st.success("Saved. Scroll down for a simple next-step plan.")
 
-        # --- suggested plan + create tracked goal ---------------------
+        # -------- suggested plan + create tracked goal --------
         if ns.get("primary_goal"):
             st.markdown("### Your simple next-step plan")
 
@@ -1076,7 +1078,7 @@ def page_main() -> None:
                         ss.profile["goals"].append(name)
                     st.success(f"Added new tracked goal: {name}")
 
-        # --- Track progress section (Emergency fund + other goals) ----
+        # -------- Track progress section (Emergency + other goals) --------
         if ss.goal_plans:
             st.markdown("### Track progress on your goals")
 
@@ -1152,6 +1154,7 @@ def page_main() -> None:
                 if st.button("Add", key=f"goal_btn_{idx}"):
                     goal["saved"] += float(add_amount)
                     st.success("Goal updated.")
+
 
 
     # ================ BOTTOM TAB NAV ONLY ================
