@@ -1,7 +1,7 @@
 import streamlit as st
 from datetime import date
 
-from profile import render_profile_page  # (still here if you want to use later)
+from profile import render_profile_page  # ready for when you wire it in
 
 from logic import (
     calculate_cashflow,
@@ -479,7 +479,7 @@ def page_login() -> None:
                 return
 
             st.session_state.user = user_or_error
-            # 🔹 After login, go straight to main app (no profile/country screen)
+            # After login, go straight to main app (no profile/country screen)
             st.session_state.screen = "main"
             st.session_state.main_tab = "home"
             st.rerun()
@@ -665,15 +665,15 @@ def page_main() -> None:
     with nav1:
         if st.button("💸 Wealthflow", use_container_width=True):
             ss.main_tab = "wealthflow"
-            st.experimental_rerun()
+            st.rerun()
     with nav2:
         if st.button("🏠 Home", use_container_width=True):
             ss.main_tab = "home"
-            st.experimental_rerun()
+            st.rerun()
     with nav3:
         if st.button("➡ Next step", use_container_width=True):
             ss.main_tab = "next"
-            st.experimental_rerun()
+            st.rerun()
 
 
 # ---------- MAIN ROUTER ----------
